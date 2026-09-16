@@ -1,0 +1,83 @@
+<idea-plugin>
+    <id>com.github.ideanovel.reader</id>
+    <name>摸鱼小说阅读器</name>
+    <vendor email="ideanovel@example.com" url="https://github.com/ideanovel">ideanovel</vendor>
+
+    <description><![CDATA[
+    <p>在 IntelliJ IDEA 里光明正大地看小说。侧边栏嵌入阅读窗口，支持本地 txt 与网络小说，自带章节目录、阅读进度记忆和一键隐身。</p>
+    <ul>
+        <li>侧边工具窗阅读，正文渲染支持字号/行距/配色调整</li>
+        <li>本地 txt 自动识别编码（UTF-8 / GBK / UTF-16），按章节切分</li>
+        <li>网络小说目录解析 + 章节懒加载</li>
+        <li>章节目录树，支持搜索快速跳转</li>
+        <li>阅读进度自动保存，下次打开回到上次位置</li>
+        <li>老板键一键伪装：切换成构建日志 / 代码 / 终端界面</li>
+        <li>自动滚动翻页，解放双手</li>
+    </ul>
+    ]]></description>
+
+    <change-notes><![CDATA[
+    <ul>
+        <li>1.0.0 首个版本：本地/网络小说阅读、章节目录、进度记忆、老板键伪装、自动滚动</li>
+    </ul>
+    ]]></change-notes>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="摸鱼小说"
+                    secondary="true"
+                    anchor="right"
+                    icon="/icons/novel.svg"
+                    factoryClass="com.github.ideanovel.ui.NovelReaderToolWindowFactory"/>
+
+        <applicationService serviceImplementation="com.github.ideanovel.service.NovelReaderService"/>
+        <applicationService serviceImplementation="com.github.ideanovel.settings.NovelSettingsState"/>
+
+        <applicationConfigurable parentId="tools"
+                                 instance="com.github.ideanovel.settings.NovelSettingsConfigurable"
+                                 id="com.github.ideanovel.settings"
+                                 displayName="摸鱼小说"/>
+
+        <notificationGroup id="Idea Novel Reader"
+                          displayType="BALLOON"/>
+    </extensions>
+
+    <actions>
+        <action id="IdeaNovel.OpenLocal"
+                class="com.github.ideanovel.action.OpenLocalNovelAction"
+                text="打开本地小说..."
+                description="选择一个本地 txt 小说文件并开始阅读">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="IdeaNovel.OpenRemote"
+                class="com.github.ideanovel.action.OpenRemoteNovelAction"
+                text="打开网络小说..."
+                description="输入小说目录页地址，解析章节后阅读">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="IdeaNovel.BossKey"
+                class="com.github.ideanovel.action.BossKeyAction"
+                text="老板键：隐身/还原"
+                description="一键把阅读面板伪装成构建日志、代码或终端界面">
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift X"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="IdeaNovel.NextChapter"
+                class="com.github.ideanovel.action.NextChapterAction"
+                text="下一章"
+                description="跳到下一章">
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt RIGHT"/>
+        </action>
+
+        <action id="IdeaNovel.PrevChapter"
+                class="com.github.ideanovel.action.PrevChapterAction"
+                text="上一章"
+                description="跳到上一章">
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt LEFT"/>
+        </action>
+    </actions>
+</idea-plugin>
