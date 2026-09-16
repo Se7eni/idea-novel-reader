@@ -46,6 +46,9 @@ public class NovelSettingsState implements PersistentStateComponent<NovelSetting
     /** 段落首行缩进字符数 */
     public int paragraphIndent = 2;
 
+    /** 工具栏按钮是否用图标（窄工具栏下更省地方） */
+    public boolean compactToolbar = true;
+
     /** 是否启用伪装 */
     public boolean disguiseEnabled = true;
     /** 伪装模式：0 构建日志 / 1 代码 / 2 终端 */

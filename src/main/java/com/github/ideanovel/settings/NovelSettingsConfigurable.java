@@ -41,6 +41,7 @@ public class NovelSettingsConfigurable implements SearchableConfigurable {
     private JSpinner autoScrollSpeed;
     private JSpinner paragraphIndent;
     private JCheckBox showChapterList;
+    private JCheckBox compactToolbar;
 
     private JComboBox<NovelSettingsState.DisguiseMode> disguiseMode;
     private JCheckBox bossKeyHideWindow;
@@ -83,6 +84,8 @@ public class NovelSettingsConfigurable implements SearchableConfigurable {
         autoScrollSpeed = spinner(s == null ? 2 : s.autoScrollSpeed, 1, 30, 1);
         paragraphIndent = spinner(s == null ? 2 : s.paragraphIndent, 0, 8, 1);
         showChapterList = new JCheckBox("显示章节目录", s == null || s.showChapterList);
+        compactToolbar = new JCheckBox("工具栏用图标按钮（窄侧边栏更省地方）",
+                s == null || s.compactToolbar);
 
         disguiseMode = new JComboBox<>(NovelSettingsState.DisguiseMode.values());
         disguiseMode.setSelectedItem(s == null ? NovelSettingsState.DisguiseMode.BUILD_LOG : s.disguise());
@@ -106,6 +109,7 @@ public class NovelSettingsConfigurable implements SearchableConfigurable {
         row = addRow("配色主题", theme, row, c);
         row = addRow("首行缩进（字符）", paragraphIndent, row, c);
         row = addRow("显示章节目录", showChapterList, row, c);
+        row = addRow("", compactToolbar, row, c);
 
         row = addSectionTitle("章节切分", row, c);
         row = addRow("", useRegexChapter, row, c);
@@ -179,6 +183,7 @@ public class NovelSettingsConfigurable implements SearchableConfigurable {
                 || intOf(autoScrollSpeed) != s.autoScrollSpeed
                 || intOf(paragraphIndent) != s.paragraphIndent
                 || showChapterList.isSelected() != s.showChapterList
+                || compactToolbar.isSelected() != s.compactToolbar
                 || disguiseMode.getSelectedItem() != s.disguise()
                 || bossKeyHideWindow.isSelected() != s.bossKeyHideWindow
                 || rememberProgress.isSelected() != s.rememberProgress
@@ -206,6 +211,7 @@ public class NovelSettingsConfigurable implements SearchableConfigurable {
         s.autoScrollSpeed = intOf(autoScrollSpeed);
         s.paragraphIndent = intOf(paragraphIndent);
         s.showChapterList = showChapterList.isSelected();
+        s.compactToolbar = compactToolbar.isSelected();
         s.disguiseMode = disguiseMode.getSelectedItem() == null ? 0
                 : ((NovelSettingsState.DisguiseMode) disguiseMode.getSelectedItem()).ordinal();
         s.bossKeyHideWindow = bossKeyHideWindow.isSelected();
@@ -236,6 +242,7 @@ public class NovelSettingsConfigurable implements SearchableConfigurable {
         autoScrollSpeed.setValue(s.autoScrollSpeed);
         paragraphIndent.setValue(s.paragraphIndent);
         showChapterList.setSelected(s.showChapterList);
+        compactToolbar.setSelected(s.compactToolbar);
         disguiseMode.setSelectedItem(s.disguise());
         bossKeyHideWindow.setSelected(s.bossKeyHideWindow);
         rememberProgress.setSelected(s.rememberProgress);

@@ -19,6 +19,7 @@ import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.ui.components.JBScrollPane;
 
 import javax.swing.BorderFactory;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
@@ -39,6 +40,11 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.List;
 
 /**
@@ -55,6 +61,8 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
     private final ToolWindow toolWindow;
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel cardPanel = new JPanel(cardLayout);
+    /** 非 final：切换「图标/文字」工具栏模式时会整体重建 */
+    private JPanel toolbar;
 
     private final JTextPane textPane = new JTextPane();
     private final JBScrollPane scrollPane = new JBScrollPane(textPane);
@@ -69,6 +77,8 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
     private Timer tipTimer;
     private boolean disguised;
     private boolean autoNextFired;
+    /** 上一次布局时的面板宽度，用来判断需不需要重排工具栏 */
+    private int lastWidth;
 
     private int lastIndex = -1;
     private float lastRatio;
@@ -78,7 +88,8 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         this.toolWindow = toolWindow;
 
         setLayout(new BorderLayout(0, 4));
-        add(buildToolbar(), BorderLayout.NORTH);
+        toolbar = buildToolbar();
+        add(toolbar, BorderLayout.NORTH);
 
         textPane.setEditable(false);
         textPane.setBorder(BorderFactory.createEmptyBorder(10, 14, 24, 14));
@@ -106,7 +117,11 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
 
         cardPanel.add(readerCard, CARD_READER);
         cardPanel.add(disguisePanel, CARD_DISGUISE);
-        add(cardPanel, BorderLayout.CENTER);
+        // 卡片区整体可滚动：窗口特别矮时也不会把底部状态栏挤没
+        JBScrollPane cardScroll = new JBScrollPane(cardPanel);
+        cardScroll.setBorder(BorderFactory.createEmptyBorder());
+        cardScroll.setHorizontalScrollBarPolicy(javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        add(cardScroll, BorderLayout.CENTER);
         add(statusLabel, BorderLayout.SOUTH);
 
         NovelReaderService.getInstance().addListener(this);
@@ -122,30 +137,124 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         showWelcome();
     }
 
+    /**
+     * 宽度变化时让工具栏重新换行。
+     * 工具栏在 BorderLayout.NORTH 里高度由首选尺寸决定，不主动 revalidate 的话
+     * 从窄拖宽后不会自动收掉多余的空行。
+     */
+    @Override
+    public void doLayout() {
+        int w = getWidth();
+        if (w != lastWidth) {
+            lastWidth = w;
+            toolbar.revalidate();
+            toolbar.repaint();
+        }
+        super.doLayout();
+    }
+
     // ---------------- 界面组装 ----------------
 
     private JPanel buildToolbar() {
-        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        // 窄工具栏放不下所有按钮，所以拆成两行：
+        // 第一行是导航（打开/网络/书架/目录），第二行是阅读控制（翻章、字号、设置、隐身）。
+        // 再窄也只会换行，不会把右侧按钮裁掉。
+        JPanel bar = new JPanel();
+        bar.setLayout(new WrapLayout(FlowLayout.LEFT, 4, 2));
+        boolean compact = isCompactToolbar();
         bar.add(smallButton("打开", "选择一个本地 txt 小说", this::openLocal));
         bar.add(smallButton("网络", "输入网址打开网络小说", this::openRemote));
         bar.add(smallButton("书架", "最近读过的小说", this::showShelf));
         bar.add(smallButton("目录", "显示/隐藏章节目录", this::toggleChapterList));
-        bar.add(smallButton("◀", "上一章", () -> {
+        bar.add(separator());
+        bar.add(commandButton(compact, "上一章", "◀", arrowIcon(false), () -> {
             flushProgress();
             NovelReaderService.getInstance().prevChapter();
         }));
-        bar.add(smallButton("▶", "下一章", () -> {
+        bar.add(commandButton(compact, "下一章", "▶", arrowIcon(true), () -> {
             flushProgress();
             NovelReaderService.getInstance().nextChapter();
         }));
-        bar.add(smallButton("自动", "自动滚动翻页", this::toggleAutoScroll));
-        bar.add(smallButton("A-", "缩小字号（Ctrl+滚轮 / Ctrl+Alt+Shift+-）",
-                () -> NovelReaderService.getInstance().changeFontSize(-2)));
-        bar.add(smallButton("A+", "放大字号（Ctrl+滚轮 / Ctrl+Alt+Shift+=）",
-                () -> NovelReaderService.getInstance().changeFontSize(2)));
-        bar.add(smallButton("设置", "打开插件设置", this::openSettings));
-        bar.add(smallButton("隐身", "老板键：伪装成工作界面（Ctrl+Alt+Shift+X）", this::toggleDisguise));
+        bar.add(commandButton(compact, "自动滚动", "自动", playIcon(), this::toggleAutoScroll));
+        bar.add(commandButton(compact, "缩小字号（Ctrl+滚轮 / Ctrl+Alt+Shift+-）", "A-",
+                fontIcon(true), () -> NovelReaderService.getInstance().changeFontSize(-2)));
+        bar.add(commandButton(compact, "放大字号（Ctrl+滚轮 / Ctrl+Alt+Shift+=）", "A+",
+                fontIcon(false), () -> NovelReaderService.getInstance().changeFontSize(2)));
+        bar.add(commandButton(compact, "打开设置", "设置", gearIcon(), this::openSettings));
+        bar.add(commandButton(compact, "老板键：伪装成工作界面（Ctrl+Alt+Shift+X）", "隐身",
+                maskIcon(), this::toggleDisguise));
+        // 工具栏被挤窄时右键可唤出全部命令，不依赖按钮是否可见
+        installToolbarContextMenu(bar);
         return bar;
+    }
+
+    private boolean isCompactToolbar() {
+        NovelSettingsState s = NovelSettingsState.getInstance();
+        return s == null || s.compactToolbar;
+    }
+
+    /** 图标模式下用纯图标，否则退回文字按钮 */
+    private JButton commandButton(boolean compact, String tooltip, String text, Icon icon, Runnable action) {
+        return compact ? iconButton(tooltip, icon, action) : smallButton(text, tooltip, action);
+    }
+
+    /** 工具栏右键菜单：无论窗口多窄，所有功能都能点到 */
+    private void installToolbarContextMenu(JPanel bar) {
+        bar.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                maybeShow(e);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                maybeShow(e);
+            }
+
+            private void maybeShow(MouseEvent e) {
+                if (!e.isPopupTrigger()) {
+                    return;
+                }
+                JPopupMenu menu = new JPopupMenu();
+                menu.add(menuItem("打开本地小说...", ReaderPanel.this::openLocal));
+                menu.add(menuItem("打开网络小说...", ReaderPanel.this::openRemote));
+                menu.add(menuItem("最近书架", ReaderPanel.this::showShelf));
+                menu.add(menuItem("显示/隐藏章节目录", ReaderPanel.this::toggleChapterList));
+                menu.addSeparator();
+                menu.add(menuItem("上一章", () -> {
+                    flushProgress();
+                    NovelReaderService.getInstance().prevChapter();
+                }));
+                menu.add(menuItem("下一章", () -> {
+                    flushProgress();
+                    NovelReaderService.getInstance().nextChapter();
+                }));
+                menu.add(menuItem("自动滚动开关", ReaderPanel.this::toggleAutoScroll));
+                menu.addSeparator();
+                menu.add(menuItem("放大字号", () -> NovelReaderService.getInstance().changeFontSize(2)));
+                menu.add(menuItem("缩小字号", () -> NovelReaderService.getInstance().changeFontSize(-2)));
+                menu.add(menuItem("打开设置", ReaderPanel.this::openSettings));
+                menu.add(menuItem("老板键（隐身/还原）", ReaderPanel.this::toggleDisguise));
+                menu.show(e.getComponent(), e.getX(), e.getY());
+            }
+        });
+    }
+
+    private JMenuItem menuItem(String text, Runnable action) {
+        JMenuItem item = new JMenuItem(text);
+        item.addActionListener(e -> action.run());
+        return item;
+    }
+
+    /** 窄竖线分隔符，让导航组和工具组一眼能分开 */
+    private JPanel separator() {
+        JPanel p = new JPanel();
+        p.setPreferredSize(new Dimension(1, 16));
+        p.setBorder(BorderFactory.createMatteBorder(0, 1, 0, 0,
+                javax.swing.UIManager.getColor("Component.borderColor") == null
+                        ? new Color(0x60, 0x60, 0x60)
+                        : javax.swing.UIManager.getColor("Component.borderColor")));
+        return p;
     }
 
     private JButton smallButton(String text, String tooltip, Runnable action) {
@@ -153,8 +262,255 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         b.setToolTipText(tooltip);
         // 收窄边距，工具栏按钮不至于太占地方
         b.setMargin(new java.awt.Insets(2, 6, 2, 6));
+        b.setFocusable(false);
         b.addActionListener(e -> action.run());
         return b;
+    }
+
+    /** 纯图标按钮：比文字按钮窄一半以上，是窄工具栏下最省地方的做法 */
+    private JButton iconButton(String tooltip, Icon icon, Runnable action) {
+        JButton b = new JButton(icon);
+        b.setToolTipText(tooltip);
+        b.setMargin(new java.awt.Insets(2, 4, 2, 4));
+        b.setFocusable(false);
+        b.setPreferredSize(new Dimension(26, 24));
+        b.addActionListener(e -> action.run());
+        return b;
+    }
+
+    // ---------------- 手绘图标 ----------------
+    // 不引外部图片资源，直接用 Graphics2D 画，跟着主题前景色走，深浅色主题都不会瞎。
+
+    private Color iconColor() {
+        Color c = javax.swing.UIManager.getColor("Label.foreground");
+        return c == null ? new Color(0xBB, 0xBB, 0xBB) : c;
+    }
+
+    private Icon arrowIcon(final boolean next) {
+        return new Icon() {
+            @Override
+            public void paintIcon(java.awt.Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = prepare(g);
+                g2.setColor(iconColor());
+                java.awt.Polygon p = next
+                        ? new java.awt.Polygon(new int[]{x + 4, x + 12, x + 4}, new int[]{y + 2, y + 8, y + 14}, 3)
+                        : new java.awt.Polygon(new int[]{x + 12, x + 4, x + 12}, new int[]{y + 2, y + 8, y + 14}, 3);
+                g2.fillPolygon(p);
+                g2.dispose();
+            }
+
+            @Override
+            public int getIconWidth() {
+                return 16;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return 16;
+            }
+        };
+    }
+
+    /** 自动滚动：一个播放三角 */
+    private Icon playIcon() {
+        return new Icon() {
+            @Override
+            public void paintIcon(java.awt.Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = prepare(g);
+                g2.setColor(iconColor());
+                g2.fillPolygon(new java.awt.Polygon(
+                        new int[]{x + 5, x + 13, x + 5}, new int[]{y + 2, y + 8, y + 14}, 3));
+                g2.dispose();
+            }
+
+            @Override
+            public int getIconWidth() {
+                return 16;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return 16;
+            }
+        };
+    }
+
+    /** 字号图标：A- / A+ */
+    private Icon fontIcon(final boolean bigger) {
+        return new Icon() {
+            @Override
+            public void paintIcon(java.awt.Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = prepare(g);
+                g2.setColor(iconColor());
+                g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+                g2.drawString("A", x + 1, y + 12);
+                g2.setStroke(new java.awt.BasicStroke(1.6f));
+                int cx = x + 11;
+                int cy = y + 8;
+                g2.drawLine(cx - 3, cy, cx + 3, cy);
+                if (bigger) {
+                    g2.drawLine(cx, cy - 3, cx, cy + 3);
+                }
+                g2.dispose();
+            }
+
+            @Override
+            public int getIconWidth() {
+                return 16;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return 16;
+            }
+        };
+    }
+
+    /** 设置：一个小齿轮（八根辐条 + 中心孔） */
+    private Icon gearIcon() {
+        return new Icon() {
+            @Override
+            public void paintIcon(java.awt.Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = prepare(g);
+                g2.setColor(iconColor());
+                int cx = x + 8;
+                int cy = y + 8;
+                g2.drawOval(cx - 4, cy - 4, 8, 8);
+                g2.drawOval(cx - 1, cy - 1, 2, 2);
+                g2.setStroke(new java.awt.BasicStroke(1.6f));
+                for (int i = 0; i < 8; i++) {
+                    double a = Math.PI * i / 4;
+                    int x1 = cx + (int) Math.round(Math.cos(a) * 4);
+                    int y1 = cy + (int) Math.round(Math.sin(a) * 4);
+                    int x2 = cx + (int) Math.round(Math.cos(a) * 6.5);
+                    int y2 = cy + (int) Math.round(Math.sin(a) * 6.5);
+                    g2.drawLine(x1, y1, x2, y2);
+                }
+                g2.dispose();
+            }
+
+            @Override
+            public int getIconWidth() {
+                return 16;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return 16;
+            }
+        };
+    }
+
+    /** 隐身（老板键）：一副墨镜，一眼就知道是"遮起来" */
+    private Icon maskIcon() {
+        return new Icon() {
+            @Override
+            public void paintIcon(java.awt.Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = prepare(g);
+                g2.setColor(iconColor());
+                g2.setStroke(new java.awt.BasicStroke(1.4f));
+                // 左右镜片
+                g2.drawRoundRect(x + 1, y + 6, 6, 5, 3, 3);
+                g2.drawRoundRect(x + 9, y + 6, 6, 5, 3, 3);
+                // 鼻梁
+                g2.drawLine(x + 7, y + 7, x + 9, y + 7);
+                // 镜腿
+                g2.drawLine(x + 1, y + 7, x, y + 5);
+                g2.drawLine(x + 15, y + 7, x + 16, y + 5);
+                g2.dispose();
+            }
+
+            @Override
+            public int getIconWidth() {
+                return 16;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return 16;
+            }
+        };
+    }
+
+    private Graphics2D prepare(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+        return g2;
+    }
+
+    /**
+     * 会换行的 FlowLayout。JDK 自带的 FlowLayout 放不下时会直接把组件裁掉，
+     * 在这么窄的工具栏里就会丢按钮，所以这里自己算高度。
+     */
+    private static final class WrapLayout extends FlowLayout {
+
+        WrapLayout(int align, int hgap, int vgap) {
+            super(align, hgap, vgap);
+        }
+
+        @Override
+        public Dimension preferredLayoutSize(java.awt.Container target) {
+            return layoutSize(target, true);
+        }
+
+        @Override
+        public Dimension minimumLayoutSize(java.awt.Container target) {
+            Dimension d = layoutSize(target, false);
+            d.width -= (getHgap() + 1);
+            return d;
+        }
+
+        private Dimension layoutSize(java.awt.Container target, boolean preferred) {
+            synchronized (target.getTreeLock()) {
+                int targetWidth = target.getSize().width;
+                if (targetWidth <= 0) {
+                    java.awt.Container parent = target.getParent();
+                    targetWidth = parent == null ? 0 : parent.getSize().width;
+                }
+                if (targetWidth <= 0) {
+                    targetWidth = Integer.MAX_VALUE;
+                }
+                java.awt.Insets insets = target.getInsets();
+                int maxWidth = targetWidth - (insets.left + insets.right + getHgap() * 2);
+
+                Dimension dim = new Dimension(0, 0);
+                int rowWidth = 0;
+                int rowHeight = 0;
+
+                int members = target.getComponentCount();
+                for (int i = 0; i < members; i++) {
+                    java.awt.Component m = target.getComponent(i);
+                    if (!m.isVisible()) {
+                        continue;
+                    }
+                    Dimension d = preferred ? m.getPreferredSize() : m.getMinimumSize();
+                    if (rowWidth + d.width > maxWidth && rowWidth > 0) {
+                        addRow(dim, rowWidth, rowHeight);
+                        rowWidth = 0;
+                        rowHeight = 0;
+                    }
+                    if (rowWidth != 0) {
+                        rowWidth += getHgap();
+                    }
+                    rowWidth += d.width;
+                    rowHeight = Math.max(rowHeight, d.height);
+                }
+                addRow(dim, rowWidth, rowHeight);
+
+                dim.width += insets.left + insets.right + getHgap() * 2;
+                dim.height += insets.top + insets.bottom + getVgap() * 2;
+                return dim;
+            }
+        }
+
+        private void addRow(Dimension dim, int rowWidth, int rowHeight) {
+            dim.width = Math.max(dim.width, rowWidth);
+            if (dim.height > 0) {
+                dim.height += getVgap();
+            }
+            dim.height += rowHeight;
+        }
     }
 
     private void showWelcome() {
@@ -476,11 +832,43 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
     public void settingsChanged() {
         applyStyle();
         applyChapterListVisibility();
+        rebuildToolbarIfNeeded();
         syncAutoScroll();
         updateStatus();
         if (disguised) {
             disguisePanel.rebuild();
         }
+    }
+
+    /** 「工具栏用图标按钮」切换后需要重建工具栏，其余设置项直接生效即可 */
+    private void rebuildToolbarIfNeeded() {
+        if (toolbar == null) {
+            return;
+        }
+        boolean compact = isCompactToolbar();
+        // 图标模式按钮没有文字、文字模式有；两者不一致才重建，避免调字号时反复重建
+        boolean iconMode = commandButtonIsIconMode();
+        if (iconMode != compact) {
+            remove(toolbar);
+            toolbar = buildToolbar();
+            add(toolbar, BorderLayout.NORTH);
+            revalidate();
+            repaint();
+        }
+    }
+
+    /** 从工具栏里任意一个命令按钮反推当前是不是图标模式 */
+    private boolean commandButtonIsIconMode() {
+        for (java.awt.Component c : toolbar.getComponents()) {
+            if (c instanceof JButton) {
+                String text = ((JButton) c).getText();
+                // 「打开」这类文字按钮始终有文字，图标按钮的文字为空
+                if (text == null || text.isEmpty()) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private void updateStatus() {
