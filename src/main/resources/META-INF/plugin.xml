@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.github.ideanovel.reader</id>
     <name>摸鱼小说阅读器</name>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
     <vendor email="ideanovel@example.com" url="https://github.com/ideanovel">ideanovel</vendor>
 
     <description><![CDATA[
@@ -19,6 +19,7 @@
 
     <change-notes><![CDATA[
     <ul>
+        <li>1.0.3 修复：鼠标滚轮滚动正文失效（给正文注册滚轮监听会截断事件向上传播，已补回滚动）</li>
         <li>1.0.2 修复：滚轮无法滚动正文、切换章节不回到开头</li>
         <li>1.0.1 侧边栏变窄时工具栏自动折行，不再裁掉右侧按钮；新增工具栏右键菜单和图标按钮模式</li>
         <li>1.0.0 首个版本：本地/网络小说阅读、章节目录、进度记忆、老板键伪装、自动滚动</li>

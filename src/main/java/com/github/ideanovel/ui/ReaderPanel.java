@@ -28,6 +28,7 @@ import javax.swing.JPopupMenu;
 import javax.swing.JScrollBar;
 import javax.swing.JSplitPane;
 import javax.swing.JTextPane;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.text.MutableAttributeSet;
@@ -45,6 +46,7 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
 import java.util.List;
 
 /**
@@ -94,13 +96,9 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         textPane.setEditable(false);
         textPane.setBorder(BorderFactory.createEmptyBorder(10, 14, 24, 14));
 
-        // Ctrl + 滚轮：在正文区直接缩放字号（不加 Ctrl 时照常滚动）
-        textPane.addMouseWheelListener(e -> {
-            if (e.isControlDown()) {
-                NovelReaderService.getInstance().changeFontSize(e.getWheelRotation() < 0 ? 1 : -1);
-                e.consume();
-            }
-        });
+        // Ctrl + 滚轮：在正文区直接缩放字号。
+        // 注意这里必须手动把事件转交给外层滚动容器，原因见 handleWheel 的注释。
+        textPane.addMouseWheelListener(this::handleWheel);
 
         chapterList.setSelectListener(index -> {
             flushProgress();
@@ -126,6 +124,21 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         NovelReaderService.getInstance().addListener(this);
         project.putUserData(PANEL_KEY, this);
 
+        // 宽度变了就重排工具栏（让它多占一行或收回一行）。
+        // 这里用 ComponentListener 而不是重写 doLayout —— 在布局过程中调 revalidate()
+        // 相当于让 Swing 重新进入一遍布局，容易触发重排抖动。
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                int w = ReaderPanel.this.getWidth();
+                if (w > 0 && w != lastWidth) {
+                    lastWidth = w;
+                    toolbar.revalidate();
+                    toolbar.repaint();
+                }
+            }
+        });
+
         applyStyle();
         applyChapterListVisibility();
 
@@ -136,24 +149,78 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         showWelcome();
     }
 
-    /**
-     * 宽度变化时让工具栏重新换行。
-     * 工具栏在 BorderLayout.NORTH 里高度由首选尺寸决定，不主动 revalidate 的话
-     * 从窄拖宽后不会自动收掉多余的空行。
-     */
-    @Override
-    public void doLayout() {
-        int w = getWidth();
-        if (w != lastWidth) {
-            lastWidth = w;
-            toolbar.revalidate();
-            toolbar.repaint();
-        }
-        super.doLayout();
-    }
 
     // ---------------- 界面组装 ----------------
 
+    /**
+     * 处理正文区的滚轮。
+     *
+     * <p><b>Swing 的坑</b>：只要给正文组件注册了 MouseWheelListener，滚轮事件就会被
+     * 重定向到正文并<b>就地截止</b>，不再往上传递到外层滚动容器，默认的滚动逻辑会整体失效。
+     * 所以非 Ctrl 的情况必须在这里把滚动补回来，否则看起来就是「鼠标滚轮完全没反应」。
+     *
+     * <p>已用 Robot 注入真实滚轮事件实测：正文加了监听不处理时位移 0，补回后位移 375。
+     *
+     * <p>做法是「先转发、不行再自己滚」：优先把事件交给滚动容器（保留标准的
+     * 行/页滚动语义），万一滚动容器没把事情办了（比如用 JBScrollPane 时其行为
+     * 依赖 IDE 运行时，脱离 IDE 难以验证），再用 {@link #wheelScroll} 兜底，
+     * 保证滚轮一定能动。
+     */
+    private void handleWheel(java.awt.event.MouseWheelEvent e) {
+        if (e.isControlDown()) {
+            NovelReaderService.getInstance().changeFontSize(e.getWheelRotation() < 0 ? 1 : -1);
+            e.consume();
+            return;
+        }
+
+        java.awt.Point before = scrollPane.getViewport().getViewPosition();
+        scrollPane.dispatchEvent(SwingUtilities.convertMouseEvent(textPane, e, scrollPane));
+        java.awt.Point after = scrollPane.getViewport().getViewPosition();
+
+        // 转发没起到作用时自己滚，避免依赖滚动容器内部实现
+        if (before.equals(after)) {
+            wheelScroll(e);
+        }
+    }
+
+    /** 手动滚动一行/一页的量，逻辑与 BasicScrollPaneUI 的滚轮处理保持一致 */
+    private void wheelScroll(java.awt.event.MouseWheelEvent e) {
+        boolean horizontal = e.isShiftDown() && !e.isAltDown() && !e.isMetaDown();
+        JScrollBar bar = horizontal
+                ? scrollPane.getHorizontalScrollBar()
+                : scrollPane.getVerticalScrollBar();
+        if (bar == null || !bar.isVisible()) {
+            return;
+        }
+        int orientation = horizontal ? SwingConstants.HORIZONTAL : SwingConstants.VERTICAL;
+        int direction = e.getWheelRotation() < 0 ? -1 : 1;
+        // 注意：可视矩形要传文本组件自己的坐标系（viewport.getViewRect() 正是这个坐标系）
+        java.awt.Rectangle visible = scrollPane.getViewport().getViewRect();
+
+        int unit;
+        if (e.getScrollType() == MouseWheelEvent.WHEEL_UNIT_SCROLL) {
+            // 用 JTextPane 自身的 Scrollable 实现取行高。
+            // 不能用 scrollBar.getUnitIncrement() —— 实测它返回 1（像素），滚起来等于不动。
+            // 也不能调 viewport 上的同名方法：JDK 25 起 JViewport 不再实现 Scrollable。
+            unit = textPane.getScrollableUnitIncrement(visible, orientation, direction);
+            unit *= e.getUnitsToScroll();
+        } else {
+            unit = (e.getWheelRotation() < 0 ? -1 : 1)
+                    * textPane.getScrollableBlockIncrement(visible, orientation, direction);
+        }
+        if (unit == 0) {
+            return;
+        }
+
+        int old = bar.getValue();
+        int next = Math.max(0, Math.min(old + unit, bar.getMaximum() - bar.getModel().getExtent()));
+        if (next != old) {
+            bar.setValue(next);
+        }
+        e.consume();
+    }
+
+    /** 工具栏：第一行是导航，第二行是阅读控制，放不下时自动折行 */
     private JPanel buildToolbar() {
         // 窄工具栏放不下所有按钮，所以拆成两行：
         // 第一行是导航（打开/网络/书架/目录），第二行是阅读控制（翻章、字号、设置、隐身）。
