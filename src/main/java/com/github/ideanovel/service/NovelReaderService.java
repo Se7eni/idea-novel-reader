@@ -27,6 +27,10 @@ public final class NovelReaderService {
     private static final Logger LOG = Logger.getInstance(NovelReaderService.class);
     private static final String GROUP_ID = "Idea Novel Reader";
 
+    /** 字号可调范围 */
+    public static final int MIN_FONT_SIZE = 9;
+    public static final int MAX_FONT_SIZE = 48;
+
     /** UI 监听回调，全部在 EDT 触发 */
     public interface NovelListener {
         default void bookChanged(Book book) {
@@ -39,6 +43,10 @@ public final class NovelReaderService {
         }
 
         default void settingsChanged() {
+        }
+
+        /** 状态栏上的临时提示，比如调字号时回显当前值 */
+        default void tip(String text) {
         }
     }
 
@@ -219,6 +227,29 @@ public final class NovelReaderService {
         gotoChapter(chapterIndex - 1);
     }
 
+    // ---------------- 字号调节 ----------------
+
+    /**
+     * 调整正文字号，delta 为正放大、为负缩小。
+     * 改完立刻刷新界面并在状态栏回显当前字号。
+     */
+    public void changeFontSize(int delta) {
+        NovelSettingsState settings = NovelSettingsState.getInstance();
+        if (settings == null) {
+            return;
+        }
+        int current = settings.fontSize <= 0 ? 16 : settings.fontSize;
+        int next = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, current + delta));
+        if (next == current) {
+            fireTip("字号已到" + (delta > 0 ? "上限" : "下限") + "：" + next);
+            return;
+        }
+        settings.fontSize = next;
+        fireSettingsChanged();
+        // tip 排在 settingsChanged 之后发，避免被状态栏刷新覆盖
+        fireTip("字号：" + next);
+    }
+
     // ---------------- 进度 ----------------
 
     public void saveProgress(float chapterRatio) {
@@ -297,6 +328,14 @@ public final class NovelReaderService {
         ApplicationManager.getApplication().invokeLater(() -> {
             for (NovelListener l : listeners) {
                 l.loading(tip);
+            }
+        });
+    }
+
+    private void fireTip(String text) {
+        ApplicationManager.getApplication().invokeLater(() -> {
+            for (NovelListener l : listeners) {
+                l.tip(text);
             }
         });
     }

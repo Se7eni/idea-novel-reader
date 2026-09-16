@@ -66,6 +66,7 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
 
     private Timer autoScrollTimer;
     private Timer progressTimer;
+    private Timer tipTimer;
     private boolean disguised;
     private boolean autoNextFired;
 
@@ -81,6 +82,14 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
 
         textPane.setEditable(false);
         textPane.setBorder(BorderFactory.createEmptyBorder(10, 14, 24, 14));
+
+        // Ctrl + 滚轮：在正文区直接缩放字号（不加 Ctrl 时照常滚动）
+        textPane.addMouseWheelListener(e -> {
+            if (e.isControlDown()) {
+                NovelReaderService.getInstance().changeFontSize(e.getWheelRotation() < 0 ? 1 : -1);
+                e.consume();
+            }
+        });
 
         chapterList.setSelectListener(index -> {
             flushProgress();
@@ -130,6 +139,10 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
             NovelReaderService.getInstance().nextChapter();
         }));
         bar.add(smallButton("自动", "自动滚动翻页", this::toggleAutoScroll));
+        bar.add(smallButton("A-", "缩小字号（Ctrl+滚轮 / Ctrl+Alt+Shift+-）",
+                () -> NovelReaderService.getInstance().changeFontSize(-2)));
+        bar.add(smallButton("A+", "放大字号（Ctrl+滚轮 / Ctrl+Alt+Shift+=）",
+                () -> NovelReaderService.getInstance().changeFontSize(2)));
         bar.add(smallButton("设置", "打开插件设置", this::openSettings));
         bar.add(smallButton("隐身", "老板键：伪装成工作界面（Ctrl+Alt+Shift+X）", this::toggleDisguise));
         return bar;
@@ -446,10 +459,25 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
     }
 
     @Override
+    public void tip(String text) {
+        statusLabel.setText(text);
+        if (tipTimer != null) {
+            tipTimer.stop();
+        }
+        tipTimer = new Timer(2500, e -> {
+            updateStatus();
+            tipTimer = null;
+        });
+        tipTimer.setRepeats(false);
+        tipTimer.start();
+    }
+
+    @Override
     public void settingsChanged() {
         applyStyle();
         applyChapterListVisibility();
         syncAutoScroll();
+        updateStatus();
         if (disguised) {
             disguisePanel.rebuild();
         }
@@ -483,6 +511,10 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         if (progressTimer != null) {
             progressTimer.stop();
             progressTimer = null;
+        }
+        if (tipTimer != null) {
+            tipTimer.stop();
+            tipTimer = null;
         }
         disguisePanel.stop();
         flushProgress();

@@ -79,5 +79,23 @@
                 description="跳到上一章">
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt LEFT"/>
         </action>
+
+        <action id="IdeaNovel.IncreaseFontSize"
+                class="com.github.ideanovel.action.IncreaseFontSizeAction"
+                text="放大阅读字号"
+                description="放大小说正文的字号（也可在正文区用 Ctrl+滚轮 缩放）">
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift EQUALS"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift ADD"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="IdeaNovel.DecreaseFontSize"
+                class="com.github.ideanovel.action.DecreaseFontSizeAction"
+                text="缩小阅读字号"
+                description="缩小说正文的字号（也可在正文区用 Ctrl+滚轮 缩放）">
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift MINUS"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift SUBTRACT"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
     </actions>
 </idea-plugin>
