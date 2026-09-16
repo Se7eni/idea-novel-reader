@@ -17,6 +17,12 @@ import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.ui.components.JBScrollPane;
+import static com.github.ideanovel.ui.ReaderIcons.autoScrollIcon;
+import static com.github.ideanovel.ui.ReaderIcons.arrowIcon;
+import static com.github.ideanovel.ui.ReaderIcons.fontIcon;
+import static com.github.ideanovel.ui.ReaderIcons.gearIcon;
+import static com.github.ideanovel.ui.ReaderIcons.maskIcon;
+import static com.github.ideanovel.ui.ReaderIcons.pauseIcon;
 
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
@@ -41,9 +47,6 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
@@ -65,6 +68,8 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
     private final JPanel cardPanel = new JPanel(cardLayout);
     /** 非 final：切换「图标/文字」工具栏模式时会整体重建 */
     private JPanel toolbar;
+    /** 自动滚动按钮：滚动中要换成暂停图标，所以得留个引用按状态刷新 */
+    private JButton autoScrollButton;
 
     private final JTextPane textPane = new JTextPane();
     private final JBScrollPane scrollPane = new JBScrollPane(textPane);
@@ -241,7 +246,11 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
             flushProgress();
             NovelReaderService.getInstance().nextChapter();
         }));
-        bar.add(commandButton(compact, "自动滚动", "自动", playIcon(), this::toggleAutoScroll));
+        // 自动滚动留了引用：滚动过程中要把图标切成暂停，点完一看就知道当前状态
+        autoScrollButton = commandButton(compact, "开始自动滚动（向下）", "自动",
+                autoScrollIcon(), this::toggleAutoScroll);
+        bar.add(autoScrollButton);
+        updateAutoScrollButton();
         bar.add(commandButton(compact, "缩小字号（Ctrl+滚轮 / Ctrl+Alt+Shift+-）", "A-",
                 fontIcon(true), () -> NovelReaderService.getInstance().changeFontSize(-2)));
         bar.add(commandButton(compact, "放大字号（Ctrl+滚轮 / Ctrl+Alt+Shift+=）", "A+",
@@ -342,167 +351,6 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         b.setPreferredSize(new Dimension(26, 24));
         b.addActionListener(e -> action.run());
         return b;
-    }
-
-    // ---------------- 手绘图标 ----------------
-    // 不引外部图片资源，直接用 Graphics2D 画，跟着主题前景色走，深浅色主题都不会瞎。
-
-    private Color iconColor() {
-        Color c = javax.swing.UIManager.getColor("Label.foreground");
-        return c == null ? new Color(0xBB, 0xBB, 0xBB) : c;
-    }
-
-    private Icon arrowIcon(final boolean next) {
-        return new Icon() {
-            @Override
-            public void paintIcon(java.awt.Component c, Graphics g, int x, int y) {
-                Graphics2D g2 = prepare(g);
-                g2.setColor(iconColor());
-                java.awt.Polygon p = next
-                        ? new java.awt.Polygon(new int[]{x + 4, x + 12, x + 4}, new int[]{y + 2, y + 8, y + 14}, 3)
-                        : new java.awt.Polygon(new int[]{x + 12, x + 4, x + 12}, new int[]{y + 2, y + 8, y + 14}, 3);
-                g2.fillPolygon(p);
-                g2.dispose();
-            }
-
-            @Override
-            public int getIconWidth() {
-                return 16;
-            }
-
-            @Override
-            public int getIconHeight() {
-                return 16;
-            }
-        };
-    }
-
-    /** 自动滚动：一个播放三角 */
-    private Icon playIcon() {
-        return new Icon() {
-            @Override
-            public void paintIcon(java.awt.Component c, Graphics g, int x, int y) {
-                Graphics2D g2 = prepare(g);
-                g2.setColor(iconColor());
-                g2.fillPolygon(new java.awt.Polygon(
-                        new int[]{x + 5, x + 13, x + 5}, new int[]{y + 2, y + 8, y + 14}, 3));
-                g2.dispose();
-            }
-
-            @Override
-            public int getIconWidth() {
-                return 16;
-            }
-
-            @Override
-            public int getIconHeight() {
-                return 16;
-            }
-        };
-    }
-
-    /** 字号图标：A- / A+ */
-    private Icon fontIcon(final boolean bigger) {
-        return new Icon() {
-            @Override
-            public void paintIcon(java.awt.Component c, Graphics g, int x, int y) {
-                Graphics2D g2 = prepare(g);
-                g2.setColor(iconColor());
-                g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
-                g2.drawString("A", x + 1, y + 12);
-                g2.setStroke(new java.awt.BasicStroke(1.6f));
-                int cx = x + 11;
-                int cy = y + 8;
-                g2.drawLine(cx - 3, cy, cx + 3, cy);
-                if (bigger) {
-                    g2.drawLine(cx, cy - 3, cx, cy + 3);
-                }
-                g2.dispose();
-            }
-
-            @Override
-            public int getIconWidth() {
-                return 16;
-            }
-
-            @Override
-            public int getIconHeight() {
-                return 16;
-            }
-        };
-    }
-
-    /** 设置：一个小齿轮（八根辐条 + 中心孔） */
-    private Icon gearIcon() {
-        return new Icon() {
-            @Override
-            public void paintIcon(java.awt.Component c, Graphics g, int x, int y) {
-                Graphics2D g2 = prepare(g);
-                g2.setColor(iconColor());
-                int cx = x + 8;
-                int cy = y + 8;
-                g2.drawOval(cx - 4, cy - 4, 8, 8);
-                g2.drawOval(cx - 1, cy - 1, 2, 2);
-                g2.setStroke(new java.awt.BasicStroke(1.6f));
-                for (int i = 0; i < 8; i++) {
-                    double a = Math.PI * i / 4;
-                    int x1 = cx + (int) Math.round(Math.cos(a) * 4);
-                    int y1 = cy + (int) Math.round(Math.sin(a) * 4);
-                    int x2 = cx + (int) Math.round(Math.cos(a) * 6.5);
-                    int y2 = cy + (int) Math.round(Math.sin(a) * 6.5);
-                    g2.drawLine(x1, y1, x2, y2);
-                }
-                g2.dispose();
-            }
-
-            @Override
-            public int getIconWidth() {
-                return 16;
-            }
-
-            @Override
-            public int getIconHeight() {
-                return 16;
-            }
-        };
-    }
-
-    /** 隐身（老板键）：一副墨镜，一眼就知道是"遮起来" */
-    private Icon maskIcon() {
-        return new Icon() {
-            @Override
-            public void paintIcon(java.awt.Component c, Graphics g, int x, int y) {
-                Graphics2D g2 = prepare(g);
-                g2.setColor(iconColor());
-                g2.setStroke(new java.awt.BasicStroke(1.4f));
-                // 左右镜片
-                g2.drawRoundRect(x + 1, y + 6, 6, 5, 3, 3);
-                g2.drawRoundRect(x + 9, y + 6, 6, 5, 3, 3);
-                // 鼻梁
-                g2.drawLine(x + 7, y + 7, x + 9, y + 7);
-                // 镜腿
-                g2.drawLine(x + 1, y + 7, x, y + 5);
-                g2.drawLine(x + 15, y + 7, x + 16, y + 5);
-                g2.dispose();
-            }
-
-            @Override
-            public int getIconWidth() {
-                return 16;
-            }
-
-            @Override
-            public int getIconHeight() {
-                return 16;
-            }
-        };
-    }
-
-    private Graphics2D prepare(Graphics g) {
-        Graphics2D g2 = (Graphics2D) g.create();
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
-        return g2;
     }
 
     /**
@@ -740,6 +588,26 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
             autoScrollTimer.stop();
             autoScrollTimer = null;
         }
+        updateAutoScrollButton();
+    }
+
+    /** 让按钮自己说出当前状态：滚动中显示暂停，停下后变回向下箭头 */
+    private void updateAutoScrollButton() {
+        if (autoScrollButton == null) {
+            return;
+        }
+        NovelSettingsState s = NovelSettingsState.getInstance();
+        boolean on = s != null && s.autoScroll;
+        String tip = on ? "停止自动滚动" : "开始自动滚动（向下）";
+        if (isCompactToolbar()) {
+            autoScrollButton.setIcon(on ? pauseIcon() : autoScrollIcon());
+            autoScrollButton.setText("");
+        } else {
+            autoScrollButton.setIcon(null);
+            autoScrollButton.setText(on ? "停止" : "自动");
+        }
+        autoScrollButton.setToolTipText(tip);
+        autoScrollButton.repaint();
     }
 
     private void scrollTick(int speed) {
