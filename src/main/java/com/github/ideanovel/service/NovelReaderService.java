@@ -273,11 +273,14 @@ public final class NovelReaderService {
         settings.saveProgress(p);
     }
 
-    /** 上次读到本章的位置，用于恢复滚动 */
+    /**
+     * 上次读到本章的位置，用于恢复滚动。
+     * 只在「记住进度」开启时返回，否则会拿旧记录把用户翻到的新章节拽到中间。
+     */
     public float savedChapterRatio() {
         Book book = currentBook;
         NovelSettingsState settings = NovelSettingsState.getInstance();
-        if (book == null || settings == null) {
+        if (book == null || settings == null || !settings.rememberProgress) {
             return 0f;
         }
         ReadingProgress p = settings.findProgress(book.getId());

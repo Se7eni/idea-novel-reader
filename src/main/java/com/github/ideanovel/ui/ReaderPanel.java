@@ -117,11 +117,10 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
 
         cardPanel.add(readerCard, CARD_READER);
         cardPanel.add(disguisePanel, CARD_DISGUISE);
-        // 卡片区整体可滚动：窗口特别矮时也不会把底部状态栏挤没
-        JBScrollPane cardScroll = new JBScrollPane(cardPanel);
-        cardScroll.setBorder(BorderFactory.createEmptyBorder());
-        cardScroll.setHorizontalScrollBarPolicy(javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        add(cardScroll, BorderLayout.CENTER);
+        // 注意：这里不能再给 cardPanel 套一层 JScrollPane。
+        // 外层滚动容器会把内层按首选尺寸撑开，正文自己的滚动条就没了滚动范围，
+        // 结果滚轮事件冒泡到外层、setValue(0) 也变成空操作（字滚不动、切章不回顶部）。
+        add(cardPanel, BorderLayout.CENTER);
         add(statusLabel, BorderLayout.SOUTH);
 
         NovelReaderService.getInstance().addListener(this);
@@ -525,11 +524,10 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
     private void setChapterText(String text) {
         textPane.setText(text == null ? "" : text);
         applyStyle();
-        SwingUtilities.invokeLater(() -> {
-            textPane.setCaretPosition(0);
-            JScrollBar bar = scrollPane.getVerticalScrollBar();
-            bar.setValue(0);
-        });
+        scrollToStart();
+        // 新文本刚灌进去时还没走完布局，滚动条的 max 可能还是旧值，
+        // 所以等 Swing 排完版再拉一次，确保真的停在第一行。
+        SwingUtilities.invokeLater(this::scrollToStart);
     }
 
     /** 把字号、行距、配色、缩进应用上去 */
@@ -619,17 +617,33 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         return Math.max(0f, Math.min(1f, (float) bar.getValue() / max));
     }
 
-    private void restoreRatio(float ratio) {
+    /** 把正文拉到本页开头 */
+    private void scrollToStart() {
+        scrollToRatio(0f);
+    }
+
+    /**
+     * 按百分比定位正文。同时设 viewPosition 和滚动条 value——只用 setValue 时，
+     * 若目标值等于当前值或范围还没刷新，JScrollBar 可能直接忽略。
+     */
+    private void scrollToRatio(float ratio) {
+        int y = ratio <= 0.001f ? 0 : (int) (maxScroll() * ratio);
+        scrollPane.getViewport().setViewPosition(new java.awt.Point(0, y));
+        scrollPane.getVerticalScrollBar().setValue(y);
         if (ratio <= 0.001f) {
-            return;
+            textPane.setCaretPosition(0);
         }
-        SwingUtilities.invokeLater(() -> {
-            JScrollBar bar = scrollPane.getVerticalScrollBar();
-            int max = bar.getMaximum() - bar.getVisibleAmount();
-            if (max > 0) {
-                bar.setValue((int) (max * ratio));
-            }
-        });
+    }
+
+    private int maxScroll() {
+        JScrollBar bar = scrollPane.getVerticalScrollBar();
+        return Math.max(0, bar.getMaximum() - bar.getVisibleAmount());
+    }
+
+    private void restoreRatio(float ratio) {
+        scrollToRatio(ratio);
+        // 同上，等排版完成再校准一次，避免滚到半途被后面的重排拉回去
+        SwingUtilities.invokeLater(() -> scrollToRatio(ratio));
     }
 
     /** 把当前滚动位置写进进度 */
@@ -806,7 +820,12 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         setChapterText(text);
         chapterList.selectChapter(index);
         updateStatus();
-        restoreRatio(NovelReaderService.getInstance().savedChapterRatio());
+
+        // 只有「接着上次读」才是有位置的；正常翻下一章时这里拿到 0，会停在开头
+        float saved = NovelReaderService.getInstance().savedChapterRatio();
+        if (saved > 0.001f) {
+            restoreRatio(saved);
+        }
     }
 
     @Override

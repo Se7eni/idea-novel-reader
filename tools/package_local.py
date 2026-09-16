@@ -147,7 +147,7 @@ def main():
     parser = argparse.ArgumentParser(description="编译并打包 IDEA 小说阅读插件")
     parser.add_argument("--idea", default=r"D:/Software/IntelliJ IDEA 2026.2.0.1",
                         help="IDEA 安装目录，用于提供 JBR 和平台依赖")
-    parser.add_argument("--version", default="1.0.1", help="插件版本号")
+    parser.add_argument("--version", default="1.0.2", help="插件版本号")
     parser.add_argument("--id", default="idea-novel-reader", help="插件包 id，影响安装包内目录名")
     args = parser.parse_args()
 
