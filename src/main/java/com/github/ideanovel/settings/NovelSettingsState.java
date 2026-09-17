@@ -158,11 +158,16 @@ public class NovelSettingsState implements PersistentStateComponent<NovelSetting
         }
     }
 
-    /** 伪装模式 */
+    /**
+     * 伪装模式。
+     * 注意：disguiseMode 存的是 ordinal，**新增模式必须加在末尾**，
+     * 插到中间会让老用户存盘的设置指向别的值。
+     */
     public enum DisguiseMode {
         BUILD_LOG("Maven 构建日志"),
         CODE("Java 源码"),
-        TERMINAL("终端输出");
+        TERMINAL("终端输出"),
+        SOURCE_DOC("源码（正文作注释）");
 
         private final String label;
 

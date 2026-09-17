@@ -61,6 +61,7 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
 
     private static final String CARD_READER = "reader";
     private static final String CARD_DISGUISE = "disguise";
+    private static final String CARD_SOURCE = "source";
 
     private final Project project;
     private final ToolWindow toolWindow;
@@ -78,6 +79,8 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
     private final JLabel titleLabel = new JLabel("尚未打开小说");
     private final JLabel statusLabel = new JLabel(" ");
     private final DisguisePanel disguisePanel = new DisguisePanel();
+    /** 源码伪装：正文藏在 Javadoc 注释里，伪装的同时还能继续读 */
+    private final SourceDisguisePanel sourceDisguisePanel = new SourceDisguisePanel();
 
     private Timer autoScrollTimer;
     private Timer progressTimer;
@@ -120,6 +123,7 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
 
         cardPanel.add(readerCard, CARD_READER);
         cardPanel.add(disguisePanel, CARD_DISGUISE);
+        cardPanel.add(sourceDisguisePanel, CARD_SOURCE);
         // 注意：这里不能再给 cardPanel 套一层 JScrollPane。
         // 外层滚动容器会把内层按首选尺寸撑开，正文自己的滚动条就没了滚动范围，
         // 结果滚轮事件冒泡到外层、setValue(0) 也变成空操作（字滚不动、切章不回顶部）。
@@ -611,6 +615,11 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
     }
 
     private void scrollTick(int speed) {
+        // 源码伪装态下正文是不可见的，让它继续滚会一路滚到底然后自动翻章，
+        // 表现成"假界面自己在翻页"。这里直接不滚。
+        if (disguised && isSourceDisguise()) {
+            return;
+        }
         JScrollBar bar = scrollPane.getVerticalScrollBar();
         int max = bar.getMaximum() - bar.getVisibleAmount();
         if (max <= 0) {
@@ -723,10 +732,23 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         } else {
             flushProgress();
             disguised = true;
-            disguisePanel.rebuild();
-            disguisePanel.start();
-            cardLayout.show(cardPanel, CARD_DISGUISE);
+            if (isSourceDisguise()) {
+                // 源码模式：正文进注释块，位置对齐到刚才读的地方
+                sourceDisguisePanel.rebuild();
+                sourceDisguisePanel.scrollToRatio(currentRatio());
+                cardLayout.show(cardPanel, CARD_SOURCE);
+            } else {
+                disguisePanel.rebuild();
+                disguisePanel.start();
+                cardLayout.show(cardPanel, CARD_DISGUISE);
+            }
         }
+    }
+
+    /** 当前是不是选了「源码（正文作注释）」这个伪装模式 */
+    private boolean isSourceDisguise() {
+        NovelSettingsState s = NovelSettingsState.getInstance();
+        return s != null && s.disguise() == NovelSettingsState.DisguiseMode.SOURCE_DOC;
     }
 
     public boolean isDisguised() {
@@ -755,6 +777,10 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         setChapterText(text);
         chapterList.selectChapter(index);
         updateStatus();
+        // 源码伪装态下翻了章，注释块内容得跟着换
+        if (disguised && isSourceDisguise()) {
+            sourceDisguisePanel.rebuild();
+        }
 
         // 只有「接着上次读」才是有位置的；正常翻下一章时这里拿到 0，会停在开头
         float saved = NovelReaderService.getInstance().savedChapterRatio();
@@ -790,7 +816,14 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         syncAutoScroll();
         updateStatus();
         if (disguised) {
-            disguisePanel.rebuild();
+            if (isSourceDisguise()) {
+                // 伪装中把模式改成了源码：换卡片重渲染
+                sourceDisguisePanel.rebuild();
+                cardLayout.show(cardPanel, CARD_SOURCE);
+            } else {
+                disguisePanel.rebuild();
+                cardLayout.show(cardPanel, CARD_DISGUISE);
+            }
         }
     }
 
