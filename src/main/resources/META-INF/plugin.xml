@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.github.ideanovel.reader</id>
     <name>摸鱼小说阅读器</name>
-    <version>1.0.5</version>
+    <version>1.0.6</version>
     <vendor email="ideanovel@example.com" url="https://github.com/ideanovel">ideanovel</vendor>
 
     <description><![CDATA[
@@ -19,6 +19,7 @@
 
     <change-notes><![CDATA[
     <ul>
+        <li>1.0.6 修复：长篇小说目录只显示到第 787 章（原先硬截断前 800 条，导致末尾章节永远点不到）；搜索时状态栏显示「匹配 x / y 章」</li>
         <li>1.0.5 新增伪装模式「源码（正文作注释）」：小说正文渲染成 Java 文件的 Javadoc 注释块，配色字体取自 IDE 编辑器，伪装时仍可继续阅读</li>
         <li>1.0.4 「自动滚动」图标改为向下箭头，不再和「下一章」的 ▶ 混淆；滚动中图标切换为暂停，状态一眼可见</li>
         <li>1.0.3 修复：鼠标滚轮滚动正文失效（给正文注册滚轮监听会截断事件向上传播，已补回滚动）</li>

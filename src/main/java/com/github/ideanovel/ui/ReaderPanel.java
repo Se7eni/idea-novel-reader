@@ -112,6 +112,14 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
             flushProgress();
             NovelReaderService.getInstance().gotoChapter(index);
         });
+        // 搜索时显示「匹配 x / y 章」，否则用户不知道是全书就这么多章还是被过滤了
+        chapterList.setFilterListener(summary -> {
+            if (summary == null || summary.isEmpty()) {
+                updateStatus();
+            } else {
+                statusLabel.setText(summary);
+            }
+        });
 
         splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, chapterList, scrollPane);
         splitPane.setDividerLocation(180);
