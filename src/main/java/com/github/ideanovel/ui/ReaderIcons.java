@@ -210,6 +210,128 @@ public final class ReaderIcons {
         };
     }
 
+    /** 打开本地文件：一个带折角的文档 */
+    public static Icon fileIcon() {
+        return new Icon() {
+            @Override
+            public void paintIcon(java.awt.Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = prepare(g);
+                g2.setColor(iconColor());
+                g2.setStroke(new BasicStroke(1.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                // 文档主体，右上角留出折角
+                g2.drawLine(x + 3, y + 2, x + 9, y + 2);
+                g2.drawLine(x + 9, y + 2, x + 13, y + 6);
+                g2.drawLine(x + 13, y + 6, x + 13, y + 14);
+                g2.drawLine(x + 13, y + 14, x + 3, y + 14);
+                g2.drawLine(x + 3, y + 14, x + 3, y + 2);
+                // 折角
+                g2.drawLine(x + 9, y + 2, x + 9, y + 6);
+                g2.drawLine(x + 9, y + 6, x + 13, y + 6);
+                // 两行文字示意
+                g2.drawLine(x + 5, y + 9, x + 11, y + 9);
+                g2.drawLine(x + 5, y + 11, x + 9, y + 11);
+                g2.dispose();
+            }
+
+            @Override
+            public int getIconWidth() {
+                return 16;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return 16;
+            }
+        };
+    }
+
+    /** 网络小说：一个地球（经纬线） */
+    public static Icon globeIcon() {
+        return new Icon() {
+            @Override
+            public void paintIcon(java.awt.Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = prepare(g);
+                g2.setColor(iconColor());
+                g2.setStroke(new BasicStroke(1.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                int cx = x + 8;
+                int cy = y + 8;
+                g2.drawOval(cx - 6, cy - 6, 12, 12);
+                // 赤道
+                g2.drawLine(cx - 6, cy, cx + 6, cy);
+                // 一条经线（椭圆）
+                g2.drawOval(cx - 3, cy - 6, 6, 12);
+                g2.dispose();
+            }
+
+            @Override
+            public int getIconWidth() {
+                return 16;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return 16;
+            }
+        };
+    }
+
+    /** 书架：三本并排的书 */
+    public static Icon shelfIcon() {
+        return new Icon() {
+            @Override
+            public void paintIcon(java.awt.Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = prepare(g);
+                g2.setColor(iconColor());
+                g2.setStroke(new BasicStroke(1.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                // 两本竖着的书
+                g2.drawRoundRect(x + 3, y + 3, 4, 10, 1, 1);
+                g2.drawRoundRect(x + 9, y + 3, 4, 10, 1, 1);
+                // 第三本斜靠
+                g2.drawLine(x + 14, y + 13, x + 15, y + 4);
+                g2.dispose();
+            }
+
+            @Override
+            public int getIconWidth() {
+                return 16;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return 16;
+            }
+        };
+    }
+
+    /** 章节目录：三行带缩进的列表 */
+    public static Icon listIcon() {
+        return new Icon() {
+            @Override
+            public void paintIcon(java.awt.Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = prepare(g);
+                g2.setColor(iconColor());
+                g2.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                int[] ys = {y + 4, y + 8, y + 12};
+                for (int i = 0; i < ys.length; i++) {
+                    // 每行前面一个小圆点，后面一条横线
+                    g2.drawLine(x + 2, ys[i], x + 3, ys[i]);
+                    g2.drawLine(x + 6, ys[i], x + 13, ys[i]);
+                }
+                g2.dispose();
+            }
+
+            @Override
+            public int getIconWidth() {
+                return 16;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return 16;
+            }
+        };
+    }
+
     private static Graphics2D prepare(Graphics g) {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);

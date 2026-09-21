@@ -139,6 +139,24 @@ public class NovelSettingsState implements PersistentStateComponent<NovelSetting
         return copy;
     }
 
+    /** 从书架移除一条记录，返回是否真的删掉了 */
+    public boolean removeProgress(String bookId) {
+        if (progress == null || bookId == null) {
+            return false;
+        }
+        return progress.removeIf(p -> bookId.equals(p.bookId));
+    }
+
+    /** 清空书架。返回清掉的条数 */
+    public int clearProgress() {
+        if (progress == null) {
+            return 0;
+        }
+        int n = progress.size();
+        progress.clear();
+        return n;
+    }
+
     /** 阅读主题 */
     public enum ThemeMode {
         FOLLOW_IDE("跟随 IDE 主题"),

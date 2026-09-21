@@ -19,6 +19,10 @@ import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.ui.components.JBScrollPane;
 import static com.github.ideanovel.ui.ReaderIcons.autoScrollIcon;
 import static com.github.ideanovel.ui.ReaderIcons.arrowIcon;
+import static com.github.ideanovel.ui.ReaderIcons.fileIcon;
+import static com.github.ideanovel.ui.ReaderIcons.globeIcon;
+import static com.github.ideanovel.ui.ReaderIcons.listIcon;
+import static com.github.ideanovel.ui.ReaderIcons.shelfIcon;
 import static com.github.ideanovel.ui.ReaderIcons.fontIcon;
 import static com.github.ideanovel.ui.ReaderIcons.gearIcon;
 import static com.github.ideanovel.ui.ReaderIcons.maskIcon;
@@ -71,6 +75,8 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
     private JPanel toolbar;
     /** 自动滚动按钮：滚动中要换成暂停图标，所以得留个引用按状态刷新 */
     private JButton autoScrollButton;
+    /** 目录按钮：要反映「显示/隐藏」的开关状态 */
+    private JButton chapterListButton;
 
     private final JTextPane textPane = new JTextPane();
     private final JBScrollPane scrollPane = new JBScrollPane(textPane);
@@ -237,24 +243,31 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         e.consume();
     }
 
-    /** 工具栏：第一行是导航，第二行是阅读控制，放不下时自动折行 */
+    /** 工具栏：导航组 + 阅读控制组，放不下时自动折行 */
     private JPanel buildToolbar() {
-        // 窄工具栏放不下所有按钮，所以拆成两行：
-        // 第一行是导航（打开/网络/书架/目录），第二行是阅读控制（翻章、字号、设置、隐身）。
-        // 再窄也只会换行，不会把右侧按钮裁掉。
+        // 窄工具栏放不下所有按钮，所以整体交给 WrapLayout：再窄也只会换行，不会把右侧按钮裁掉。
         JPanel bar = new JPanel();
-        bar.setLayout(new WrapLayout(FlowLayout.LEFT, 4, 2));
+        bar.setLayout(new WrapLayout(FlowLayout.LEFT, 3, 3));
+        bar.setBorder(javax.swing.BorderFactory.createEmptyBorder(3, 4, 3, 4));
         boolean compact = isCompactToolbar();
-        bar.add(smallButton("打开", "选择一个本地 txt 小说", this::openLocal));
-        bar.add(smallButton("网络", "输入网址打开网络小说", this::openRemote));
-        bar.add(smallButton("书架", "最近读过的小说", this::showShelf));
-        bar.add(smallButton("目录", "显示/隐藏章节目录", this::toggleChapterList));
-        bar.add(separator());
-        bar.add(commandButton(compact, "上一章", "◀", arrowIcon(false), () -> {
+
+        // 导航组：打开 / 网络 / 书架 / 目录，图标 + 文字，窄栏时退成纯图标
+        bar.add(navButton(compact, "打开", "选择一个本地 txt 小说", fileIcon(), this::openLocal));
+        bar.add(navButton(compact, "网络", "输入网址打开网络小说", globeIcon(), this::openRemote));
+        bar.add(navButton(compact, "书架", "最近读过的小说（可删除记录）", shelfIcon(), this::showShelf));
+        chapterListButton = navButton(compact, "目录", "显示/隐藏章节目录", listIcon(),
+                this::toggleChapterList);
+        bar.add(chapterListButton);
+        updateChapterListButton();
+
+        bar.add(ToolbarButtons.separator());
+
+        // 阅读控制组
+        bar.add(commandButton(compact, "上一章（Ctrl+Alt+←）", "◀", arrowIcon(false), () -> {
             flushProgress();
             NovelReaderService.getInstance().prevChapter();
         }));
-        bar.add(commandButton(compact, "下一章", "▶", arrowIcon(true), () -> {
+        bar.add(commandButton(compact, "下一章（Ctrl+Alt+→）", "▶", arrowIcon(true), () -> {
             flushProgress();
             NovelReaderService.getInstance().nextChapter();
         }));
@@ -263,6 +276,9 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
                 autoScrollIcon(), this::toggleAutoScroll);
         bar.add(autoScrollButton);
         updateAutoScrollButton();
+
+        bar.add(ToolbarButtons.separator());
+
         bar.add(commandButton(compact, "缩小字号（Ctrl+滚轮 / Ctrl+Alt+Shift+-）", "A-",
                 fontIcon(true), () -> NovelReaderService.getInstance().changeFontSize(-2)));
         bar.add(commandButton(compact, "放大字号（Ctrl+滚轮 / Ctrl+Alt+Shift+=）", "A+",
@@ -275,14 +291,37 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         return bar;
     }
 
+    /** 导航按钮：图标 + 文字并排，比纯文字好认，也比纯图标好点 */
+    private JButton navButton(boolean compact, String text, String tooltip, Icon icon, Runnable action) {
+        return compact
+                ? ToolbarButtons.icon(tooltip, icon, action)
+                : ToolbarButtons.textWithIcon(text, tooltip, icon, action);
+    }
+
+    /** 目录按钮反映当前开关状态：关着的时候整颗按钮压暗 */
+    private void updateChapterListButton() {
+        if (chapterListButton == null) {
+            return;
+        }
+        NovelSettingsState s = NovelSettingsState.getInstance();
+        boolean visible = s == null || s.showChapterList;
+        chapterListButton.setEnabled(true);
+        // 用前景色浓淡表达开关，不额外占地方
+        chapterListButton.putClientProperty("ideanovel.chapterListOff", !visible);
+        chapterListButton.setToolTipText(visible ? "隐藏章节目录" : "显示章节目录");
+        chapterListButton.repaint();
+    }
+
     private boolean isCompactToolbar() {
         NovelSettingsState s = NovelSettingsState.getInstance();
         return s == null || s.compactToolbar;
     }
 
-    /** 图标模式下用纯图标，否则退回文字按钮 */
+    /** 图标模式下用纯图标，否则图标 + 文字 */
     private JButton commandButton(boolean compact, String tooltip, String text, Icon icon, Runnable action) {
-        return compact ? iconButton(tooltip, icon, action) : smallButton(text, tooltip, action);
+        return compact
+                ? ToolbarButtons.icon(tooltip, icon, action)
+                : ToolbarButtons.textWithIcon(text, tooltip, icon, action);
     }
 
     /** 工具栏右键菜单：无论窗口多窄，所有功能都能点到 */
@@ -333,36 +372,8 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         return item;
     }
 
-    /** 窄竖线分隔符，让导航组和工具组一眼能分开 */
-    private JPanel separator() {
-        JPanel p = new JPanel();
-        p.setPreferredSize(new Dimension(1, 16));
-        p.setBorder(BorderFactory.createMatteBorder(0, 1, 0, 0,
-                javax.swing.UIManager.getColor("Component.borderColor") == null
-                        ? new Color(0x60, 0x60, 0x60)
-                        : javax.swing.UIManager.getColor("Component.borderColor")));
-        return p;
-    }
-
     private JButton smallButton(String text, String tooltip, Runnable action) {
-        JButton b = new JButton(text);
-        b.setToolTipText(tooltip);
-        // 收窄边距，工具栏按钮不至于太占地方
-        b.setMargin(new java.awt.Insets(2, 6, 2, 6));
-        b.setFocusable(false);
-        b.addActionListener(e -> action.run());
-        return b;
-    }
-
-    /** 纯图标按钮：比文字按钮窄一半以上，是窄工具栏下最省地方的做法 */
-    private JButton iconButton(String tooltip, Icon icon, Runnable action) {
-        JButton b = new JButton(icon);
-        b.setToolTipText(tooltip);
-        b.setMargin(new java.awt.Insets(2, 4, 2, 4));
-        b.setFocusable(false);
-        b.setPreferredSize(new Dimension(26, 24));
-        b.addActionListener(e -> action.run());
-        return b;
+        return ToolbarButtons.text(text, tooltip, action);
     }
 
     /**
@@ -686,26 +697,20 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         if (s == null) {
             return;
         }
-        List<ReadingProgress> books = s.recentBooks();
-        JPopupMenu menu = new JPopupMenu();
-        if (books.isEmpty()) {
-            menu.add(new JMenuItem("（还没有阅读记录）"));
-        } else {
-            for (ReadingProgress p : books) {
-                String name = (p.title == null || p.title.isEmpty()) ? p.location : p.title;
-                JMenuItem item = new JMenuItem("第 " + (p.chapterIndex + 1) + " 章 · " + name);
-                item.setToolTipText(p.location);
-                item.addActionListener(e -> {
+        Book current = NovelReaderService.getInstance().getBook();
+        ShelfPopup popup = new ShelfPopup(
+                current == null ? null : current.getId(),
+                p -> {
                     if (p.safeType() == SourceType.LOCAL) {
                         NovelReaderService.getInstance().openLocal(p.location);
                     } else {
                         NovelReaderService.getInstance().openRemote(p.location);
                     }
-                });
-                menu.add(item);
-            }
-        }
-        menu.show(this, 0, 24);
+                },
+                // 删完刷新一下状态栏，免得显示的还是刚被删掉的那本书
+                this::updateStatus);
+        popup.reload();
+        popup.show(this, 0, 24);
     }
 
     private void toggleChapterList() {
@@ -715,6 +720,7 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         }
         s.showChapterList = !s.showChapterList;
         applyChapterListVisibility();
+        updateChapterListButton();
     }
 
     private void openSettings() {

@@ -14,6 +14,7 @@
 | 字号调节 | 工具栏 A-/A+、正文区 Ctrl+滚轮、快捷键，范围 9~48，改完立刻生效并记住 |
 | 窄栏自适应 | 工具栏按钮超宽时自动折行，不会把右侧按钮裁掉；可右键唤出全部命令 |
 | 进度记忆 | 自动记录章节和滚动位置，下次打开回到原处 |
+| 最近书架 | 记住读过的小说，悬停出现删除按钮（点两次确认），底部可一键清空 |
 | 自动滚动 | 按设定速度匀速下滚，滚到底自动翻下一章 |
 | 老板键 | `Ctrl+Alt+Shift+X`，一键切换成 Maven 构建日志 / Java 源码 / 终端输出 / 源码注释 |
 | 源码注释伪装 | 正文渲染成 Java 文件的 Javadoc 注释块，看代码的同时其实还在读小说，详见下文 |
@@ -86,18 +87,46 @@ public final class Chapter0003 {
 - **切入伪装时滚动位置按比例对齐**，长章节不会突然跳回开头。
 - 源码模式下**自动滚动会停**，不然正文不可见却一路滚到底，会触发自动翻章——假界面自己翻页就太假了。
 
+## 最近书架
+
+工具栏点「书架」弹出最近读过的小说，每行是：
+
+```
+我真没想重生啊
+第 751 章 · 网络 · 2 分钟前
+```
+
+书名超过 22 字会截断（完整路径放在 tooltip 里），副标题里的类型和「多久以前」都是实时算的。正在读的那本右侧有「当前」标记。
+
+**删除单条**：鼠标移到那一行，右侧出现一个小叉。点一下变成红底白字的「确认」，3 秒内再点一次才真删；不点或移开鼠标，3 秒后自动退回小叉。阅读进度是一章章攒出来的，误删一次挺烦，所以做成两次确认。点「清空」则一次清掉全部记录。
+
+几处实现说明：
+
+- **颜色不硬编码**：全部从 `UIManager` 取，跟着 IDE 主题走；切主题时通过重写 `updateUI()` 重新上色，否则会出现「背景还是旧的、字已经变新色」的错配。
+- **悬停底色不用 `List.selectionBackground`**：深色主题下那是个饱和的蓝，铺上去浅灰文字直接糊掉。改成取 12% 前景色混到背景上，深浅主题都成立。
+- **删除按钮平时不显示**：否则一排小叉会把界面弄脏；但确认态需要够醒目，所以用红底白字而不是只把字染红。
+- **数据源抽成 `BookStore` 接口**：`ShelfPopup` 原本直连 `NovelSettingsState`，而它背后的 `ApplicationManager` 在 IDE 之外是 `null`，一调就 NPE，等于这块界面没法离线渲染验证。抽出来后探针可以塞内存实现进去，UI 效果能截图比对。
+
 ## 工具栏图标都是什么意思
 
 图标全部用 `Graphics2D` 手绘（见 `ReaderIcons.java`），不依赖外部图片资源：
 
 | 图标 | 含义 |
 | --- | --- |
+| 折角文档 | 打开本地 txt（导航组按钮是「图标 + 文字」） |
+| 地球 | 打开网络小说 |
+| 三本书 | 最近书架 |
+| 三行列表 | 显示 / 隐藏章节目录 |
 | `◀` `▶` | 上一章 / 下一章（实心三角） |
 | `↓` 带底线 | 开始自动滚动（向下箭头，跟 `▶` 方向正交，16px 下也能一眼区分） |
 | `‖` | 自动滚动进行中，点一下停止 |
 | `A+` `A-` | 放大 / 缩小字号 |
 | 齿轮 | 打开设置 |
 | 墨镜 | 老板键（隐身/还原） |
+
+工具栏纵向分三段，用细竖线隔开：**导航**（打开/网络/书架/目录，带文字）、**翻章与滚动**（纯图标）、**字号与设置**（纯图标）。
+
+按钮统一样式在 `ToolbarButtons`：平时透明无边框，悬停/按下才浮出一层圆角底色。这里有个坑——JDK 的 Metal/Nimbus 外观在 `setBorder(null)` 之后**仍然会画自己的背景层**，所以不能靠改 Border 做扁平化，必须 `setContentAreaFilled(false)` + 在 `paintComponent` 里手动画。
 
 自动滚动按钮是有状态的：点开之后图标从向下箭头变成暂停的 `‖`，tooltip 也同步改成「停止自动滚动」，不用猜当前是不是在滚。
 
@@ -113,14 +142,14 @@ python tools/package_local.py
 python tools/package_local.py --idea "D:/你的路径/IntelliJ IDEA 2026.2.0.1"
 ```
 
-产出 `build/dist/idea-novel-reader-1.0.0.zip`，然后在 IDEA 里：
+产出 `build/dist/idea-novel-reader-1.0.7.zip`，然后在 IDEA 里：
 **Settings → Plugins → 右上角齿轮 → Install Plugin from Disk**，选中这个 zip，重启 IDE。
 
 ### 方式二：Gradle 构建
 
 ```bash
 ./gradlew buildPlugin
-# 产出 build/distributions/idea-novel-reader-1.0.0.zip
+# 产出 build/distributions/idea-novel-reader-1.0.7.zip
 ```
 
 构建依赖在 `gradle.properties` 里配置：
@@ -157,4 +186,5 @@ src/main/java/com/github/ideanovel/
 - 网络小说依赖站点 HTML 结构，站点改版或加反爬时可能解析失败，可在设置里调整「网络小说解析章节上限」或改用本地 txt。
 - 伪装只是视觉层面，不影响 IDE 的实际窗口和标题。
 - 插件依赖 `com.intellij.modules.platform`，不绑定 Java 语言插件，理论上其他 JetBrains IDE 也能用（仅针对 2026.2 编译验证过）。
-- `plugin.xml` 目前没有声明 `<idea-version since-build>`，IDE 会按编译版本判定兼容性，别的 IDEA 版本可能装不上。这是待修项。
+- `plugin.xml` 里声明了 `since-build="242"`（2024.2）且不设上限，低版本 IDE 会直接拒绝安装，而不是装上之后再抛 API 异常。
+- 用到的一些编辑器配色 API（`EditorColorsManager`、`DefaultLanguageHighlighterColors`）都在 platform 模块内，不需要额外的 Java 语言插件，但换成非 IDEA 的 IDE（如 PyCharm 社区版）时配色可能取不到，此时会退回 Darcula 经典色。
