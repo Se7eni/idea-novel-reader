@@ -142,14 +142,14 @@ python tools/package_local.py
 python tools/package_local.py --idea "D:/你的路径/IntelliJ IDEA 2026.2.0.1"
 ```
 
-产出 `build/dist/idea-novel-reader-1.0.7.zip`，然后在 IDEA 里：
+产出 `build/dist/idea-novel-reader-1.0.8.zip`，然后在 IDEA 里：
 **Settings → Plugins → 右上角齿轮 → Install Plugin from Disk**，选中这个 zip，重启 IDE。
 
 ### 方式二：Gradle 构建
 
 ```bash
 ./gradlew buildPlugin
-# 产出 build/distributions/idea-novel-reader-1.0.7.zip
+# 产出 build/distributions/idea-novel-reader-1.0.8.zip
 ```
 
 构建依赖在 `gradle.properties` 里配置：
@@ -179,6 +179,7 @@ src/main/java/com/github/ideanovel/
 - **隐身**：阅读区用 CardLayout 与伪装面板叠在同一位置，老板键只是切换卡片，不留切换痕迹。
 - **窄栏自适应**：工具栏用自定义的 `WrapLayout`（`FlowLayout` 的换行版）替代 JDK 默认实现，并在宽度变化时主动 revalidate；图标全部用 `Graphics2D` 手绘，跟着主题前景色走，不用引外部图片资源。
 - **图标可辨性**：「自动滚动」最初画的是右向实心三角，和「下一章」的 `▶` 只差 1px，实际根本分不清。现在改成向下箭头 + 底线，形状与方向双重区分。手绘图标集中在 `ReaderIcons.java`，不依赖平台类，可以脱离 IDE 直接渲染成图片做视觉比对。
+- **重复的章节标题会被归并**：有些 txt 的同一个标题会连写两遍（有的还带缩进），切章后就变成目录里两个同名条目——一个只有标题没有正文，一个才是真正的那一章。所以遇到这种相邻重复，`ChapterParser.mergeDuplicateHeadings` 会把中间没有任何正文的重复行合并成一章。这里有两个不太直观的坑：一是 `LocalFileSource.normalize()` 会把全角空格 `\u3000` 换成半角空格，而 Java 正则的 `\s` **默认不匹配 `\u3000`**，所以原文里缩进的重复行本来是匹配不上的，反倒是 normalize 之后才落进 `^\s*` 的范围；二是在 `MULTILINE` 下 `\s*` 会跨过标题前的空行，`matcher.start()` 常常落在空行上，因此判断「两标题之间有没有正文」时要从**匹配结束位置 `end()`** 往后找行尾，用 `start()` 会把自己所在的标题行当成正文，导致去重逻辑恒不成立。实测在一本 416 章的真实小说上：修复前 469 章、53 组重复，修复后 413 章、0 组重复，正文覆盖 99%（缺的正好是那 53 行冗余标题）。
 - **大目录不做截断**：章节目录曾经限制「最多显示 800 条」，结果 1000+ 章的小说永远点不到尾部章节。这是个把「渲染多少」和「加载多少」搞混的典型错误 —— Swing 的 `JList` 本来就是惰性渲染，只画可视区那几十条，条目多不影响滚动；真正影响性能的是**没有固定行高**，那样 `JList` 要为每条去问渲染器拿高度。所以正确做法是 `setFixedCellHeight(...)`，而不是砍数据。实测 2 万章加载仅 3ms。
 
 ## 已知限制

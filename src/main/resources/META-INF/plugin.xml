@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.github.ideanovel.reader</id>
     <name>摸鱼小说阅读器</name>
-    <version>1.0.7</version>
+    <version>1.0.8</version>
     <vendor email="ideanovel@example.com" url="https://github.com/ideanovel">ideanovel</vendor>
 
     <description><![CDATA[
@@ -19,6 +19,7 @@
 
     <change-notes><![CDATA[
     <ul>
+        <li>1.0.8 修复：目录里同一章出现两遍。部分 txt 会把标题行连写两遍，缩进用的是全角空格，本地清洗时被换成了普通空格，于是缩进的那一行也被识别成章节标题，同一章被切成「只有标题的空章节 + 真正带正文的章节」两份。现在连着出现、中间没有正文的标题会合并成一章，多余的那一行既不会单独成章，也不会留在上一章末尾</li>
         <li>1.0.7 书架改版：每条记录可单独删除（悬停出现删除按钮，点两次确认），底部支持一键清空；行内显示书名、类型、读到第几章和「多久以前」；工具栏导航按钮统一为「图标 + 文字」的扁平样式</li>
         <li>1.0.6 修复：长篇小说目录只显示到第 787 章（原先硬截断前 800 条，导致末尾章节永远点不到）；搜索时状态栏显示「匹配 x / y 章」</li>
         <li>1.0.5 新增伪装模式「源码（正文作注释）」：小说正文渲染成 Java 文件的 Javadoc 注释块，配色字体取自 IDE 编辑器，伪装时仍可继续阅读</li>

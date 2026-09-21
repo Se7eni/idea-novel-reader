@@ -56,36 +56,99 @@ public final class ChapterParser {
         }
 
         Matcher matcher = pattern.matcher(content);
-        List<int[]> starts = new ArrayList<>();
+        List<int[]> hits = new ArrayList<>();
         while (matcher.find()) {
-            starts.add(new int[]{matcher.start(), matcher.end()});
+            hits.add(new int[]{matcher.start(), matcher.end()});
             // 章节多的时候没必要全扫，提前止损
-            if (starts.size() > 20000) {
+            if (hits.size() > 20000) {
                 break;
             }
         }
-        if (starts.isEmpty()) {
+        if (hits.isEmpty()) {
             return chapters;
         }
 
-        // 第一处匹配之前若有内容，单独作为"开头"
-        if (starts.get(0)[0] > 0) {
-            String head = content.substring(0, starts.get(0)[0]).trim();
+        // 章节起止区间：{标题起始, 匹配结束, 正文结束}
+        List<int[]> ranges = mergeDuplicateHeadings(content, hits);
+
+        // 第一章标题之前若有内容，单独作为"开头"。
+        // 用 hits.get(0)[0] 而不是 ranges 的第一项：后者已经是重复行里的最后一条了，
+        // 用它会把多出来的那几个标题行算进「开头」的尾巴里。
+        if (hits.get(0)[0] > 0) {
+            String head = content.substring(0, hits.get(0)[0]).trim();
             if (head.length() > 10) {
-                chapters.add(new Chapter(0, "开头", 0, starts.get(0)[0]));
+                chapters.add(new Chapter(0, "开头", 0, hits.get(0)[0]));
             }
         }
 
-        for (int i = 0; i < starts.size(); i++) {
-            int start = starts.get(i)[0];
-            int titleEnd = starts.get(i)[1];
-            int end = (i + 1 < starts.size()) ? starts.get(i + 1)[0] : content.length();
-
-            String title = extractTitle(content, start, titleEnd);
-            Chapter c = new Chapter(chapters.size(), title, start, end);
-            chapters.add(c);
+        for (int[] r : ranges) {
+            int start = r[0];
+            int titleEnd = r[1];
+            int end = r[2];
+            if (end <= start) {
+                continue;
+            }
+            chapters.add(new Chapter(chapters.size(), extractTitle(content, start, titleEnd), start, end));
         }
         return chapters;
+    }
+
+    /**
+     * 把连续重复出现的标题行合成一个章节。
+     *
+     * 有些 txt（尤其从网站抓取或转换工具导出）会把同一行标题连着写两遍甚至三遍：
+     *
+     *     第84章 好舅舅
+     *     第84章 好舅舅
+     *     回到南医大男生宿舍时……
+     *
+     * 直接切会得到两个「第84章」，前一个只有标题没有正文。处理办法是把这些连续、
+     * 中间没有正文的匹配归为一组，然后：
+     *
+     * - 章节起点取组内**最后**一条：渲染时标题只出现一次，后面紧跟正文
+     * - 章节终点取**下一组的第 1 条**：这样下一章那几个冗余的重复行不会
+     *   漏到本章末尾，而是落在谁都不显示的空隙里
+     *
+     * 判定「有没有正文」时用这一标题行的**行结尾**到下一个匹配起点之间的区间。
+     * 行尾必须按匹配结束位置往后找，不能从 start 找 —— `^\s*` 会跨过前面的空行，
+     * matcher.start() 常常落在标题行之前的那个空行上，从 start 找会定错行，
+     * 于是「第84章 好舅舅」这一行被当成正文，重复就漏过去了。
+     *
+     * @return 每个元素为 {start, matchEnd, end}
+     */
+    private static List<int[]> mergeDuplicateHeadings(String content, List<int[]> hits) {
+        List<int[]> ranges = new ArrayList<>();
+        int i = 0;
+        while (i < hits.size()) {
+            int j = i;
+            while (j + 1 < hits.size()
+                    && !hasText(content, endOfLine(content, hits.get(j)[1]), hits.get(j + 1)[0])) {
+                j++;
+            }
+            int[] last = hits.get(j);
+            int next = (j + 1 < hits.size()) ? hits.get(j + 1)[0] : content.length();
+            ranges.add(new int[]{last[0], last[1], next});
+            i = j + 1;
+        }
+        return ranges;
+    }
+
+    /** 返回 pos 所在那一行的换行符之后的位置 */
+    private static int endOfLine(String content, int pos) {
+        int nl = content.indexOf('\n', Math.min(pos, Math.max(0, content.length() - 1)));
+        return nl < 0 ? content.length() : nl + 1;
+    }
+
+    /** [from, to) 之间有没有非空白字符 */
+    private static boolean hasText(String content, int from, int to) {
+        int limit = Math.min(to, content.length());
+        for (int i = Math.max(0, from); i < limit; i++) {
+            char c = content.charAt(i);
+            if (!Character.isWhitespace(c)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** 从标题行里截出干净的标题，只取这一行 */
