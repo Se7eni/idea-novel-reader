@@ -19,6 +19,8 @@
 | 老板键 | `Ctrl+Alt+Shift+X`，一键切换成 Maven 构建日志 / Java 源码 / 终端输出 / 源码注释 |
 | 源码注释伪装 | 正文渲染成 Java 文件的 Javadoc 注释块，看代码的同时其实还在读小说，详见下文 |
 | 代码提示框 | `Ctrl+Alt+Shift+C` 在光标旁浮出一小块悬停提示样式的小窗读当前章，Esc 就散，详见下文 |
+| 定时弹出框 | `Ctrl+Alt+Shift+V` 输入间隔秒数，提示框小窗每隔几秒自动翻段，挂机摸鱼 |
+| 状态栏阅读 | 当前段正文显示在 IDE 左下角状态栏，小键盘 `+`/`-` 翻段，详见下文 |
 
 ## 快捷键
 
@@ -26,6 +28,8 @@
 | --- | --- |
 | `Ctrl+Alt+Shift+X` | 老板键，隐身或还原 |
 | `Ctrl+Alt+Shift+C` | 代码提示框阅读，再按一次关闭 |
+| `Ctrl+Alt+Shift+V` | 定时弹出框阅读（输入间隔秒数后自动翻段），再按一次关闭 |
+| 小键盘 `+` / `-` | 下一段 / 上一段（弹出框开着时优先翻弹出框，否则翻状态栏） |
 | `Ctrl+Alt+→` | 下一章 |
 | `Ctrl+Alt+←` | 上一章 |
 | `Ctrl+滚轮` | 鼠标在正文区时缩放字号 |
@@ -109,6 +113,20 @@ public final class Chapter0003 {
 
 什么时候用它：写代码的间隙想瞟一眼进度，或者根本不想让屏幕上出现「一块阅读区域」。它是三种阅读方式里最轻、最不显眼的一种。
 
+## 状态栏阅读：左下角那一小条
+
+当前段正文直接显示在 IDE 底部状态栏（左下角），不占编辑区、不弹任何浮层——是所有阅读方式里最不显眼的，参考了 chapter_reader 的招牌形态：
+
+- **翻段**：小键盘 `+` / `-`（弹出框开着时优先翻弹出框）；翻到章尾自动进下一章，章首往前自动落上一章末尾
+- **打开正经阅读窗口**：点击状态栏文字
+- **关闭**：Settings > Appearance & Behavior > 状态栏（或右键状态栏）里关掉「摸鱼小说：状态栏阅读」widget
+
+状态栏上同时显示本章段进度 `(n/N)`，悬停能看章节名和章号。
+
+## 定时弹出框：隔几秒换一句的挂机模式
+
+按 `Ctrl+Alt+Shift+V`（Tools 菜单「定时弹出框阅读...」），先输入间隔秒数（上次输入的值会记住），然后提示框小窗出现并每隔几秒自动翻段——手完全不用碰键盘，翻到章尾自动进下一章。`Esc` / 点外面 / 再按一次快捷键即停止。
+
 ## 最近书架
 
 工具栏点「书架」弹出最近读过的小说，每行是：
@@ -164,14 +182,14 @@ python tools/package_local.py
 python tools/package_local.py --idea "D:/你的路径/IntelliJ IDEA 2026.2.0.1"
 ```
 
-产出 `build/dist/idea-novel-reader-1.0.10.zip`，然后在 IDEA 里：
+产出 `build/dist/idea-novel-reader-1.0.11.zip`，然后在 IDEA 里：
 **Settings → Plugins → 右上角齿轮 → Install Plugin from Disk**，选中这个 zip，重启 IDE。
 
 ### 方式二：Gradle 构建
 
 ```bash
 ./gradlew buildPlugin
-# 产出 build/distributions/idea-novel-reader-1.0.10.zip
+# 产出 build/distributions/idea-novel-reader-1.0.11.zip
 ```
 
 构建依赖在 `gradle.properties` 里配置：

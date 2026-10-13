@@ -92,6 +92,9 @@ public class MiniTooltipContent extends JPanel {
     private int chunkIndex;
     private int chapterIndex;
 
+    /** 定时自动翻段的计时器；null 表示手动模式 */
+    private javax.swing.Timer autoTimer;
+
     public MiniTooltipContent() {
         setLayout(new java.awt.BorderLayout());
         textPane.setEditable(false);
@@ -228,6 +231,34 @@ public class MiniTooltipContent extends JPanel {
         setPreferredSize(size);
         revalidate();
         repaint();
+    }
+
+    // ---------------- 自动翻段 ----------------
+
+    /**
+     * 定时自动翻段（chapter_reader 那种「隔几秒换一句」的挂机模式）。
+     * seconds 为正整数；传 0 或负数视为停止。
+     * 翻到章尾会通过 nav 越章，所以开着计时器能把整本书连续挂下去。
+     */
+    public void setAutoAdvance(int seconds) {
+        stopAuto();
+        if (seconds <= 0) {
+            return;
+        }
+        autoTimer = new javax.swing.Timer(seconds * 1000, e -> perform(ChunkAction.NEXT_CHUNK));
+        autoTimer.start();
+    }
+
+    /** 停止自动翻段。关窗、切手动模式都必须调，否则计时器会把弹窗的内容一直往后推 */
+    public void stopAuto() {
+        if (autoTimer != null) {
+            autoTimer.stop();
+            autoTimer = null;
+        }
+    }
+
+    public boolean isAutoAdvancing() {
+        return autoTimer != null;
     }
 
     // ---------------- 字号 ----------------

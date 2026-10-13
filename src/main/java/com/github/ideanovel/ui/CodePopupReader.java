@@ -7,6 +7,7 @@ import com.intellij.openapi.Disposable;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.popup.JBPopup;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.util.Disposer;
@@ -80,6 +81,69 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
         CodePopupReader reader = new CodePopupReader(project);
         Disposer.register(project, reader);
         reader.show();
+    }
+
+    /**
+     * 小键盘 + / - 的入口之一：弹出框开着时优先翻弹出框（用户正看着它）。
+     * 返回 false 表示弹出框没开，动作该落到状态栏 widget 上。
+     */
+    public static boolean pageIfOpen(boolean forward) {
+        if (active != null && active.isOpen()) {
+            if (forward) {
+                active.content.nextChunk();
+            } else {
+                active.content.prevChunk();
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 定时弹出框阅读：先问间隔秒数，然后弹出小窗并每隔几秒自动翻段。
+     * 再按一次快捷键（或 Esc / 点外面）即停止。
+     */
+    public static void toggleTimed(Project project) {
+        if (project == null || project.isDisposed()) {
+            return;
+        }
+        if (active != null && active.isOpen()) {
+            active.close();
+            return;
+        }
+        Integer seconds = askInterval(project);
+        if (seconds == null) {
+            return;
+        }
+        CodePopupReader reader = new CodePopupReader(project);
+        Disposer.register(project, reader);
+        reader.show();
+        reader.content.setAutoAdvance(seconds);
+    }
+
+    /** 输入间隔时长。取消返回 null；非法输入弹错误框并放弃本次 */
+    private static Integer askInterval(Project project) {
+        NovelSettingsState settings = NovelSettingsState.getInstance();
+        int last = settings == null ? 5 : Math.max(1, settings.popupAutoSeconds);
+        String input = Messages.showInputDialog(project,
+                "请输入间隔时长(正整数/秒)", "摸鱼小说 · 定时弹出框",
+                Messages.getQuestionIcon(), String.valueOf(last), null);
+        if (input == null) {
+            return null;
+        }
+        try {
+            int seconds = Integer.parseInt(input.trim());
+            if (seconds > 0) {
+                if (settings != null) {
+                    settings.popupAutoSeconds = seconds;
+                }
+                return seconds;
+            }
+        } catch (NumberFormatException ignored) {
+            // 落到下面的错误提示
+        }
+        Messages.showErrorDialog(project, "间隔时长必须是正整数（秒）", "摸鱼小说");
+        return null;
     }
 
     private boolean isOpen() {
@@ -189,6 +253,7 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
 
     /** 关掉提示框。Esc、点外面、再按一次快捷键、项目关闭都会走到这里，所以必须幂等 */
     public void close() {
+        content.stopAuto();
         if (isOpen()) {
             popup.cancel();
         }
@@ -221,6 +286,7 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
     @Override
     public void dispose() {
         disposed = true;
+        content.stopAuto();
         if (popup != null && !popup.isDisposed()) {
             popup.cancel();
         }

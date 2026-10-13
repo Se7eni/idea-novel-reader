@@ -38,6 +38,7 @@ public final class MiniTooltipProbe {
         checkRendering();
         checkNavigation();
         checkWheel();
+        checkAutoAdvance();
         checkColors();
         saveShots();
 
@@ -206,6 +207,43 @@ public final class MiniTooltipProbe {
                 System.currentTimeMillis(), 0, 8, 8, 0, false, MouseWheelEvent.WHEEL_UNIT_SCROLL,
                 3, rotation);
         content.textPane().dispatchEvent(e);
+    }
+
+    // ---------------- 自动翻段 ----------------
+
+    private static void checkAutoAdvance() throws Exception {
+        section("自动翻段：定时器");
+
+        RecordingNav nav = new RecordingNav();
+        MiniTooltipContent content = new MiniTooltipContent();
+        content.setNav(nav);
+        content.setChapter(BODY, 0, false);
+
+        want(!content.isAutoAdvancing(), "默认手动模式");
+        content.setAutoAdvance(1);
+        want(content.isAutoAdvancing(), "设置后进入自动模式");
+
+        Thread.sleep(1400);
+        flushEdt();
+        want(content.chunkIndex() >= 1, "1.4 秒内自动翻段（idx=%d/%d）"
+                .formatted(content.chunkIndex() + 1, content.chunkCount()));
+        want(nav.nextChapter.get() == 0, "前几段内不越章");
+
+        int idx = content.chunkIndex();
+        content.stopAuto();
+        want(!content.isAutoAdvancing(), "停止后退出自动模式");
+        Thread.sleep(1300);
+        flushEdt();
+        want(content.chunkIndex() == idx, "停止后不再翻段（停在 %d）".formatted(idx + 1));
+
+        // 0 或负数视为不启动
+        content.setAutoAdvance(0);
+        want(!content.isAutoAdvancing(), "非法间隔视为停止");
+    }
+
+    private static void flushEdt() throws Exception {
+        javax.swing.SwingUtilities.invokeAndWait(() -> {
+        });
     }
 
     // ---------------- 配色 ----------------

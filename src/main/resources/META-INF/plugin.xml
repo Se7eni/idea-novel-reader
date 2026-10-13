@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.github.ideanovel.reader</id>
     <name>摸鱼小说阅读器</name>
-    <version>1.0.10</version>
+    <version>1.0.11</version>
     <vendor email="ideanovel@example.com" url="https://github.com/ideanovel">ideanovel</vendor>
 
     <description><![CDATA[
@@ -13,6 +13,8 @@
         <li>章节目录树，支持搜索快速跳转</li>
         <li>阅读进度自动保存，下次打开回到上次位置</li>
         <li>老板键一键伪装：切换成构建日志 / 代码 / 终端界面</li>
+        <li>状态栏阅读：当前段正文直接显示在 IDE 左下角状态栏，最隐蔽的阅读方式；小键盘 + / - 翻段，点击状态栏文字打开阅读窗口</li>
+        <li>定时弹出框阅读：输入间隔秒数，提示框小窗每隔几秒自动翻段，挂机摸鱼</li>
         <li>代码提示框阅读：光标旁浮出悬停提示样式的小窗，一次读一小段，不开侧边栏也能看</li>
         <li>自动滚动翻页，解放双手</li>
     </ul>
@@ -20,6 +22,8 @@
 
     <change-notes><![CDATA[
     <ul>
+        <li>1.0.11 新增「状态栏阅读」（参考 chapter_reader）：当前段正文直接显示在 IDE 左下角状态栏，不占编辑区、不弹浮层，是最隐蔽的阅读方式。小键盘 + / - 翻段（弹出框开着时优先翻弹出框），翻到章尾自动进下一章；点击状态栏文字打开阅读窗口。widget 可在状态栏设置里关闭</li>
+        <li>1.0.11 新增「定时弹出框阅读」：输入间隔秒数后，提示框小窗每隔几秒自动翻段、章尾自动越章，手不用碰键盘的挂机模式；间隔会记住，Esc 停止</li>
         <li>1.0.10 「代码弹出框」改版为「代码提示框」：从带行号的源码大窗换成贴在光标旁的悬停提示样式小浮窗——一次显示一小截正文和 (n/N) 段进度，正文按句末标点切成 60 字以内的小段，几乎不挡代码。滚轮/方向键翻段，翻到章尾自动进下一章、章首往前自动回上一章末尾，Esc 就散</li>
         <li>1.0.9 新增「代码弹出框阅读」：按 Ctrl+Alt+Shift+C 在光标附近弹出一个像 IDE 快速文档的浮窗，正文同样是渲染成 Java 文件的 Javadoc 注释块，带行号。不用开侧边栏，Esc 就散；Ctrl+↑↓ 或 Ctrl+PgUp/PgDn 翻章，Ctrl+滚轮 调字号，方向键/PgUp/PgDn 滚动。再按一次快捷键即关闭，且尺寸位置会被记住</li>
         <li>1.0.8 修复：目录里同一章出现两遍。部分 txt 会把标题行连写两遍，缩进用的是全角空格，本地清洗时被换成了普通空格，于是缩进的那一行也被识别成章节标题，同一章被切成「只有标题的空章节 + 真正带正文的章节」两份。现在连着出现、中间没有正文的标题会合并成一章，多余的那一行既不会单独成章，也不会留在上一章末尾</li>
@@ -60,6 +64,10 @@
 
         <notificationGroup id="Idea Novel Reader"
                           displayType="BALLOON"/>
+
+        <!-- 左下角状态栏阅读：正文显示在 IDE 底部状态栏一小条里 -->
+        <statusBarWidgetFactory id="IdeaNovel.ChunkWidget"
+                                implementation="com.github.ideanovel.ui.StatusBarChunkWidgetFactory"/>
     </extensions>
 
     <actions>
@@ -91,6 +99,28 @@
                 description="在光标旁浮出一小块悬停提示样式的小窗读小说，滚轮或方向键翻段，按 Esc 关闭">
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift C"/>
             <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="IdeaNovel.CodePopupTimed"
+                class="com.github.ideanovel.action.CodePopupTimedAction"
+                text="定时弹出框阅读..."
+                description="输入间隔秒数后弹出提示框小窗，每隔几秒自动翻段，Esc 或再按一次停止">
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift V"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <action id="IdeaNovel.NextChunk"
+                class="com.github.ideanovel.action.NextChunkAction"
+                text="下一段"
+                description="状态栏/弹出框阅读翻到下一段（默认小键盘 +，可在 Keymap 修改）">
+            <keyboard-shortcut keymap="$default" first-keystroke="ADD"/>
+        </action>
+
+        <action id="IdeaNovel.PrevChunk"
+                class="com.github.ideanovel.action.PrevChunkAction"
+                text="上一段"
+                description="状态栏/弹出框阅读翻到上一段（默认小键盘 -，可在 Keymap 修改）">
+            <keyboard-shortcut keymap="$default" first-keystroke="SUBTRACT"/>
         </action>
 
         <action id="IdeaNovel.NextChapter"

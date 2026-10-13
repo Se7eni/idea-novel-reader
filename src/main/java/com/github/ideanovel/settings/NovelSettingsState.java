@@ -60,6 +60,9 @@ public class NovelSettingsState implements PersistentStateComponent<NovelSetting
     /** 网络小说一次最多解析多少章 */
     public int remoteChapterLimit = 50;
 
+    /** 定时弹出框的翻段间隔，单位秒。上次输入的值记住，下次默认填上 */
+    public int popupAutoSeconds = 5;
+
     /** 阅读进度历史 */
     public List<ReadingProgress> progress = new ArrayList<>();
 
