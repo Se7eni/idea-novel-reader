@@ -14,28 +14,34 @@ import com.intellij.openapi.wm.IdeFrame;
 import com.intellij.openapi.wm.WindowManager;
 import com.intellij.ui.awt.RelativePoint;
 
-import javax.swing.SwingUtilities;
 import java.awt.Point;
 
 /**
- * 代码弹出框的宿主：把 {@link CodePopupContent} 装进一个 JBPopup，浮在光标附近。
+ * 代码提示框的宿主：把 {@link MiniTooltipContent} 装进一个 JBPopup，贴在光标旁。
  *
- * <p>拆成「内容 + 宿主」两个类是有原因的：宿主这边全是平台 API
- * （JBPopupFactory 在 IDE 之外根本用不了），混在一起就没法离线渲染验证观感。
- * 分开之后，长得对不对看 {@link CodePopupContent}，浮在哪、怎么关看这里。
+ * <p>「内容 / 宿主」分家的原因同大窗（1.0.9 的 CodePopupContent，后被本类替换）：
+ * JBPopupFactory 这些平台 API 在 IDE 之外用不了，内容面板必须保持纯 Swing
+ * 才能离线渲染验证。
  *
- * <p>视觉上刻意做成 IDE 自带「快速文档」弹窗的样子：光标旁的浮动窗口、
- * 顶部一行文件名、正文是源码。别人瞟一眼只会以为你在看方法说明。
+ * <p>视觉上就是 IDE 的悬停提示：一小块浮层、正文加 (n/N) 段进度，
+ * 贴在光标下方的代码上。别人瞟一眼只会以为是编辑器弹了什么提示。
  *
  * <p>同时只允许存在一个：再按一次快捷键是关掉，不是再叠一个出来。
  */
 public final class CodePopupReader implements Disposable, NovelReaderService.NovelListener {
 
-    /** 当前打开的弹出框。同时开一个就够了，多了反而挡屏幕 */
+    /** 当前打开的提示框。同时开一个就够了，多了反而挡代码 */
     private static CodePopupReader active;
 
     private final Project project;
-    private final CodePopupContent content = new CodePopupContent();
+    private final MiniTooltipContent content = new MiniTooltipContent();
+
+    /**
+     * 「在章首往前翻」时置位：等下一章内容到达后直接落在最后一段。
+     * 这是内容和宿主之间的握手——内容自己发 prevChapter 请求，但新章节
+     * 是通过 chapterChanged 事件回来的，请求意图只能由宿主捎带过去。
+     */
+    private boolean jumpToEndPending;
 
     private JBPopup popup;
     private boolean disposed;
@@ -43,7 +49,7 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
 
     private CodePopupReader(Project project) {
         this.project = project;
-        content.setNav(new CodePopupContent.Nav() {
+        content.setNav(new MiniTooltipContent.Nav() {
             @Override
             public void close() {
                 CodePopupReader.this.close();
@@ -56,14 +62,8 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
 
             @Override
             public void prevChapter() {
+                jumpToEndPending = true;
                 NovelReaderService.getInstance().prevChapter();
-            }
-
-            @Override
-            public void changeFontSize(int delta) {
-                // 复用阅读器那套字号设置：同一个「阅读字号」，两处不该各记一份
-                NovelReaderService.getInstance().changeFontSize(delta);
-                content.setCodeFontSize(codeFontSizeFromSettings());
             }
         });
     }
@@ -87,57 +87,54 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
     }
 
     private void show() {
-        content.setCodeFontSize(codeFontSizeFromSettings());
+        content.setFontSize(fontFromSettings());
         refresh();
 
+        // 和大窗的区别：不可缩放、不可拖动、不记尺寸——提示框就该是提示框的样子，
+        // 大小由内容决定，位置每次都重新贴到光标旁。
         popup = JBPopupFactory.getInstance()
                 .createComponentPopupBuilder(content, content)
-                .setResizable(true)
-                .setMovable(true)
-                // 拿到焦点按键才落到弹窗自己身上（否则 Esc/翻章键还是被编辑器吃了）
+                .setResizable(false)
+                .setMovable(false)
+                // 拿到焦点 Esc/方向键才落到内容自己的键位表上
                 .setRequestFocus(true)
                 .setCancelOnClickOutside(true)
                 .setCancelKeyEnabled(true)
-                // 记住尺寸和位置，下次打开还是用户拖过的大小
-                .setDimensionServiceKey(project, "IdeaNovel.CodePopup", false)
                 .setCancelCallback(() -> {
                     detach();
                     return true;
                 })
                 .createPopup();
 
-        // 注意：JBPopup 只能在创建时给标题，运行时没有 setTitle（已用反射核对过 API），
-        // 而标题要随章节变（Chapter0004.java → Chapter0005.java），
-        // 所以文件名画在内容里，不用平台的标题栏。
         attach();
         active = this;
         popup.show(anchorPoint());
     }
 
-    /** 每章正文变了就重渲染一次，弹出框里也能翻章 */
+    /** 章节正文变了就重新切段。jumpToEndPending 只消费一次 */
     private void refresh() {
         NovelReaderService service = NovelReaderService.getInstance();
         Book book = service.getBook();
         if (book == null) {
-            content.setPlaceholder("还没有打开小说。先在「摸鱼小说」窗口里打开一本，再按快捷键唤出这个弹窗。");
+            jumpToEndPending = false;
+            content.setPlaceholder("还没有打开小说。先在「摸鱼小说」窗口里打开一本，再按 Ctrl+Alt+Shift+C。");
             return;
         }
-        content.setChapter(service.currentChapterTitle(), service.currentText(),
-                service.getChapterIndex(), book.getChapters().size());
+        boolean jumpToEnd = jumpToEndPending;
+        jumpToEndPending = false;
+        content.setChapter(service.currentText(), service.getChapterIndex(), jumpToEnd);
     }
 
-    /** 弹窗里的源码字号取阅读字号 -2，比正文小一点，更像真源码视图 */
-    private int codeFontSizeFromSettings() {
+    /** 提示框字号直接用阅读字号：两处一个来源，设置页改了这里跟着变 */
+    private int fontFromSettings() {
         NovelSettingsState s = NovelSettingsState.getInstance();
-        int base = (s == null || s.fontSize <= 0) ? 16 : s.fontSize;
-        return Math.max(9, Math.min(48, base - 2));
+        int size = (s == null || s.fontSize <= 0) ? 16 : s.fontSize;
+        return Math.max(NovelReaderService.MIN_FONT_SIZE, Math.min(NovelReaderService.MAX_FONT_SIZE, size));
     }
 
     /**
-     * 浮在光标下方；没有编辑器（比如刚打开 IDE）就浮在 IDE 窗口中间。
-     *
-     * 用光标行下方而不是屏幕正中：这正是 IDE 快速文档出现的位置，
-     * 视线不用移动，也最容易被人当成系统弹的。
+     * 贴在光标下方。用光标行而不是屏幕正中：这正是 IDE 悬停提示出现的位置，
+     * 视线不用移动，也最容易被人当成编辑器自己弹的。
      */
     private RelativePoint anchorPoint() {
         Editor editor = selectedEditor();
@@ -190,7 +187,7 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
         }
     }
 
-    /** 关掉弹窗。Esc、点外面、再按一次快捷键、项目关闭都会走到这里，所以必须幂等 */
+    /** 关掉提示框。Esc、点外面、再按一次快捷键、项目关闭都会走到这里，所以必须幂等 */
     public void close() {
         if (isOpen()) {
             popup.cancel();
@@ -202,7 +199,6 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
 
     @Override
     public void chapterChanged(int index, String text) {
-        // 在弹窗里翻章、或在侧边栏翻章，都要把新内容灌进来
         if (isOpen()) {
             refresh();
         }
@@ -217,12 +213,9 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
 
     @Override
     public void settingsChanged() {
-        if (!isOpen()) {
-            return;
+        if (isOpen()) {
+            content.setFontSize(fontFromSettings());
         }
-        content.setCodeFontSize(codeFontSizeFromSettings());
-        // 配色跟着编辑器方案走，设置页改了主题要重取
-        SwingUtilities.invokeLater(content::applyThemeColors);
     }
 
     @Override

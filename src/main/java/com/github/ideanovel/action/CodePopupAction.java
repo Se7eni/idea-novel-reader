@@ -8,7 +8,7 @@ import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * 代码弹出框阅读：在光标附近弹出一个像源码视图的浮窗来读小说。
+ * 代码提示框阅读：在光标旁浮出一小块悬停提示样式的小窗来读小说。
  *
  * 不开工具窗、不动侧边栏，Esc 就散，适合只想瞟两眼又不想留痕迹的场合。
  */

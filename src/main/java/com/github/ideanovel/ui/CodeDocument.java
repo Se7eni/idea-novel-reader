@@ -18,9 +18,8 @@ import java.util.List;
 /**
  * 「一个 Java 文件」的内容与渲染，源码伪装的唯一实现。
  *
- * <p>改造原因：现在有两种地方要显示这份「源码」——侧边栏的源码伪装
- * （{@link SourceDisguisePanel}）和代码弹出框（{@link CodePopupContent}）。
- * 拼装、转义、配色如果各写一份，迟早出现「同一章在两种阅读方式里长得不一样」，
+ * <p>改造原因：侧边栏的源码伪装（{@link SourceDisguisePanel}）要用这份「源码」。
+ * 拼装、转义、配色如果再写一份，迟早出现「同一章在两种地方长得不一样」，
  * 而且配色要跟 IDE 主题对齐，重复一份就多一份会腐烂的代码。
  *
  * <p>这个类刻意不碰 Swing 容器之外的平台对象之外的任何东西（只用 EditorColorsManager 取色，

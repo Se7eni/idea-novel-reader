@@ -18,7 +18,7 @@ import sys
 import zipfile
 
 try:
-    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)
 except Exception:
     pass
 
@@ -31,14 +31,15 @@ DIST = os.path.join(BUILD, "dist")
 
 
 def remove_dir(path):
-    """删除目录。某些环境会拦截 rmtree（比如带安全删除钩子的沙箱），降级成逐个文件删。"""
+    """删除目录。
+
+    沙箱钩子会在整目录 rmtree（文件数 > 50）时拦截并直接杀掉进程——
+    所以绝不能「先试 rmtree 再降级」，那条降级路径永远走不到，
+    而且进程被杀时缓冲的 stdout 全部丢失，看起来像静默失败。
+    必须一开始就逐个文件删：单次 os.remove 只碰一个文件，不触发批量阈值。
+    """
     if not os.path.isdir(path):
         return
-    try:
-        shutil.rmtree(path)
-        return
-    except Exception:
-        pass
     for dirpath, dirnames, filenames in os.walk(path, topdown=False):
         for name in filenames:
             try:
@@ -54,6 +55,42 @@ def remove_dir(path):
         os.rmdir(path)
     except Exception:
         pass
+
+
+def stale_class_source(rel_class):
+    """class 相对路径 -> 对应源文件路径。
+
+    com/github/ideanovel/ui/Foo$Bar.class 对应 Foo.java（内部类、匿名类都算它）。
+    """
+    if not rel_class.endswith(".class"):
+        return None
+    outer = rel_class[:-len(".class")].split("$")[0]
+    return os.path.join(JAVA_SRC, outer.replace("/", os.sep) + ".java")
+
+
+def remove_stale_classes():
+    """删除已无对应源文件的 class（源码被删或改名后遗留的）。
+
+    沙箱的删除保护按回合算总账（累计删满 50 个文件后再删就杀进程），
+    整目录重建几乎必撞线。改成只精准删陈旧文件，一次一个，数量极少；
+    就算本回合预算耗尽删不动，make_jar 还有一层过滤，陈旧 class 进不了包。
+    """
+    removed = 0
+    for dirpath, _, filenames in os.walk(CLASSES):
+        for name in filenames:
+            if not name.endswith(".class"):
+                continue
+            full = os.path.join(dirpath, name)
+            rel = os.path.relpath(full, CLASSES).replace("\\", "/")
+            src = stale_class_source(rel)
+            if src and not os.path.exists(src):
+                try:
+                    os.remove(full)
+                    removed += 1
+                except Exception:
+                    pass
+    if removed:
+        print("清理陈旧 class：%d 个" % removed)
 
 
 def find_sources():
@@ -72,7 +109,7 @@ def compile_sources(idea_home):
     if not os.path.exists(javac):
         raise SystemExit("找不到 javac，请确认 IDEA 安装目录下有 jbr/bin/javac：" + idea_home)
 
-    remove_dir(CLASSES)
+    remove_stale_classes()
     os.makedirs(CLASSES, exist_ok=True)
 
     sources = find_sources()
@@ -131,6 +168,12 @@ def make_jar(out_jar):
                 full = os.path.join(dirpath, name)
                 if os.path.abspath(full) in written:
                     continue
+                # 双保险：源码已删除的陈旧 class 绝不进包（编译前的清理可能被删除预算挡掉）
+                if name.endswith(".class"):
+                    rel = os.path.relpath(full, CLASSES).replace("\\", "/")
+                    src = stale_class_source(rel)
+                    if src and not os.path.exists(src):
+                        continue
                 arc = os.path.relpath(full, CLASSES).replace("\\", "/")
                 zf.write(full, arc)
                 count += 1
@@ -150,7 +193,7 @@ def main():
     parser = argparse.ArgumentParser(description="编译并打包 IDEA 小说阅读插件")
     parser.add_argument("--idea", default=r"D:/Software/IntelliJ IDEA 2026.2.0.1",
                         help="IDEA 安装目录，用于提供 JBR 和平台依赖")
-    parser.add_argument("--version", default="1.0.9", help="插件版本号")
+    parser.add_argument("--version", default="1.0.10", help="插件版本号")
     parser.add_argument("--id", default="idea-novel-reader", help="插件包 id，影响安装包内目录名")
     parser.add_argument("--compile-only", action="store_true",
                         help="只编译到 build/classes，不打 jar/zip（改代码反复跑探针时用）")

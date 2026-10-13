@@ -22,9 +22,8 @@ import java.util.List;
  * 而且侧边栏里出现源码视图很自然（不像构建日志那样反常）。
  *
  * 面板本身只负责「放进侧边栏、跟着进度滚」这件事；
- * 内容怎么拼、怎么上色统一交给 {@link CodeDocument}，
- * 因为代码弹出框（{@link CodePopupContent}）要用同一份内容，
- * 两处各写一遍迟早出现「同一章在两种阅读方式里长得不一样」。
+ * 内容怎么拼、怎么上色统一交给 {@link CodeDocument}，避免同样的拼装逻辑将来
+ * 出现第二份时「同一章在两种地方长得不一样」。
  */
 public class SourceDisguisePanel extends javax.swing.JPanel {
 
