@@ -1,0 +1,66 @@
+# 章节 → Java 源码片段的产出快照。改了渲染逻辑后重跑 --verify，必须逐字节一致。
+# 格式：kind \t text（换行写成 \\n）
+# ---- sample 0 | index=0 | title=第 84 章 好舅舅
+keyword	package com.example.demo;\n\n
+keyword	import java.util.List;\n
+keyword	import java.util.Objects;\n\n
+comment	/**\n
+comment	 * 第 84 章 好舅舅\n
+comment	 *\n
+comment	 * 　　他推开门的时候，屋里的灯还亮着。\n
+comment	 * 桌上摊着一封信，字迹潦草。\n
+comment	 * \n
+comment	 * a * b / c —— 这里塞一个注释结束符 *\/ 和制表符    以及 "引号" 与反斜杠\\n
+comment	 * 最后一行\n
+comment	 */\n
+metadata	@SuppressWarnings("unused")\n
+plain	public final class Chapter0001 {\n\n
+plain	    private static final String TITLE = 
+string	"第 84 章 好舅舅";\n\n
+plain	    private Chapter0001() {\n
+plain	    }\n\n
+plain	    public static String title() {\n
+plain	        return Objects.requireNonNull(TITLE
+string	, "title must not be null");\n
+plain	    }\n
+plain	}\n
+# ---- sample 1 | index=3 | title=第 1 章 序
+keyword	package com.example.demo;\n\n
+keyword	import java.util.List;\n
+keyword	import java.util.Objects;\n\n
+comment	/**\n
+comment	 * 第 1 章 序\n
+comment	 *\n
+comment	 * 只有一行正文\n
+comment	 */\n
+metadata	@SuppressWarnings("unused")\n
+plain	public final class Chapter0004 {\n\n
+plain	    private static final String TITLE = 
+string	"第 1 章 序";\n\n
+plain	    private Chapter0004() {\n
+plain	    }\n\n
+plain	    public static String title() {\n
+plain	        return Objects.requireNonNull(TITLE
+string	, "title must not be null");\n
+plain	    }\n
+plain	}\n
+# ---- sample 2 | index=6 | title=空章节
+keyword	package com.example.demo;\n\n
+keyword	import java.util.List;\n
+keyword	import java.util.Objects;\n\n
+comment	/**\n
+comment	 * 空章节\n
+comment	 *\n
+comment	 * （本章暂无内容）\n
+comment	 */\n
+metadata	@SuppressWarnings("unused")\n
+plain	public final class Chapter0007 {\n\n
+plain	    private static final String TITLE = 
+string	"空章节";\n\n
+plain	    private Chapter0007() {\n
+plain	    }\n\n
+plain	    public static String title() {\n
+plain	        return Objects.requireNonNull(TITLE
+string	, "title must not be null");\n
+plain	    }\n
+plain	}\n

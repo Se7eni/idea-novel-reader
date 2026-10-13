@@ -86,7 +86,10 @@ def compile_sources(idea_home):
     classpath = (idea_home.rstrip("/\\") + "/lib/*")
 
     print("编译 %d 个源文件..." % len(sources))
-    cmd = [javac, "-encoding", "UTF-8", "-nowarn", "-d", CLASSES, "-cp", classpath] + sources
+    # -J-Duser.language=en：javac 的诊断信息默认跟随系统语言（本机是中文 GBK），
+    # 输出落盘后经常变成乱码，看不出到底哪一行错。强制英文就全是 ASCII，稳定可读。
+    cmd = [javac, "-J-Duser.language=en", "-J-Duser.country=US",
+           "-encoding", "UTF-8", "-nowarn", "-d", CLASSES, "-cp", classpath] + sources
     proc = subprocess.run(cmd, cwd=ROOT,
                           capture_output=True, text=True, encoding="utf-8", errors="replace")
     if proc.returncode != 0:
@@ -147,8 +150,10 @@ def main():
     parser = argparse.ArgumentParser(description="编译并打包 IDEA 小说阅读插件")
     parser.add_argument("--idea", default=r"D:/Software/IntelliJ IDEA 2026.2.0.1",
                         help="IDEA 安装目录，用于提供 JBR 和平台依赖")
-    parser.add_argument("--version", default="1.0.8", help="插件版本号")
+    parser.add_argument("--version", default="1.0.9", help="插件版本号")
     parser.add_argument("--id", default="idea-novel-reader", help="插件包 id，影响安装包内目录名")
+    parser.add_argument("--compile-only", action="store_true",
+                        help="只编译到 build/classes，不打 jar/zip（改代码反复跑探针时用）")
     args = parser.parse_args()
 
     idea_home = args.idea
@@ -158,6 +163,11 @@ def main():
     os.makedirs(DIST, exist_ok=True)
     compile_sources(idea_home)
     merge_resources()
+
+    if args.compile_only:
+        print("")
+        print("只编译模式，未生成安装包。class 在：" + CLASSES)
+        return
 
     jar_path = os.path.join(DIST, "%s-%s.jar" % (args.id, args.version))
     zip_path = os.path.join(DIST, "%s-%s.zip" % (args.id, args.version))

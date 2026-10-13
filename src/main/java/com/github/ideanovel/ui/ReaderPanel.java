@@ -27,6 +27,7 @@ import static com.github.ideanovel.ui.ReaderIcons.fontIcon;
 import static com.github.ideanovel.ui.ReaderIcons.gearIcon;
 import static com.github.ideanovel.ui.ReaderIcons.maskIcon;
 import static com.github.ideanovel.ui.ReaderIcons.pauseIcon;
+import static com.github.ideanovel.ui.ReaderIcons.popupIcon;
 
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
@@ -276,6 +277,9 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
                 autoScrollIcon(), this::toggleAutoScroll);
         bar.add(autoScrollButton);
         updateAutoScrollButton();
+        // 弹出框阅读：和「翻章/滚动」一组，都是阅读动作
+        bar.add(commandButton(compact, "代码弹出框阅读（Ctrl+Alt+Shift+C）", "弹出",
+                popupIcon(), this::showCodePopup));
 
         bar.add(ToolbarButtons.separator());
 
@@ -356,6 +360,7 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
                     NovelReaderService.getInstance().nextChapter();
                 }));
                 menu.add(menuItem("自动滚动开关", ReaderPanel.this::toggleAutoScroll));
+                menu.add(menuItem("代码弹出框阅读", ReaderPanel.this::showCodePopup));
                 menu.addSeparator();
                 menu.add(menuItem("放大字号", () -> NovelReaderService.getInstance().changeFontSize(2)));
                 menu.add(menuItem("缩小字号", () -> NovelReaderService.getInstance().changeFontSize(-2)));
@@ -725,6 +730,11 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
 
     private void openSettings() {
         ShowSettingsUtil.getInstance().showSettingsDialog(project, NovelSettingsConfigurable.class);
+    }
+
+    /** 代码弹出框阅读：不开工具窗也能读，Esc 就散 */
+    private void showCodePopup() {
+        CodePopupReader.toggle(project);
     }
 
     /** 老板键：在阅读区和伪装界面之间切换 */

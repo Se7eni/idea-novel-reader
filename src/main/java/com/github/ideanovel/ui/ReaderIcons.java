@@ -332,6 +332,39 @@ public final class ReaderIcons {
         };
     }
 
+    /**
+     * 代码弹出框阅读：一个带标题栏的浮动小窗，里面两行「代码」。
+     *
+     * 和 listIcon（三行列表）的区别靠外框：有框才像窗口，没框就是列表。
+     */
+    public static Icon popupIcon() {
+        return new Icon() {
+            @Override
+            public void paintIcon(java.awt.Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = prepare(g);
+                g2.setColor(iconColor());
+                g2.setStroke(new BasicStroke(1.3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawRoundRect(x + 1, y + 2, 14, 12, 2, 2);
+                // 标题栏
+                g2.drawLine(x + 2, y + 6, x + 14, y + 6);
+                // 窗口里两行内容，短一点，避免和标题栏糊成一团
+                g2.drawLine(x + 4, y + 9, x + 9, y + 9);
+                g2.drawLine(x + 4, y + 11, x + 11, y + 11);
+                g2.dispose();
+            }
+
+            @Override
+            public int getIconWidth() {
+                return 16;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return 16;
+            }
+        };
+    }
+
     private static Graphics2D prepare(Graphics g) {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);

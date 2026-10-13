@@ -221,8 +221,9 @@ public class UiProbe {
         java.lang.reflect.Method maskIcon = ri.getDeclaredMethod("maskIcon");
         java.lang.reflect.Method autoIcon = ri.getDeclaredMethod("autoScrollIcon");
         java.lang.reflect.Method pauseIcon = ri.getDeclaredMethod("pauseIcon");
+        java.lang.reflect.Method popupIcon = ri.getDeclaredMethod("popupIcon");
         java.lang.reflect.Method[] all = {fileIcon, globeIcon, shelfIcon, listIcon, arrowIcon,
-                fontIcon, gearIcon, maskIcon, autoIcon, pauseIcon};
+                fontIcon, gearIcon, maskIcon, autoIcon, pauseIcon, popupIcon};
         for (java.lang.reflect.Method m : all) {
             m.setAccessible(true);
         }
@@ -236,6 +237,7 @@ public class UiProbe {
         bar.add((JButton) icon.invoke(null, "上一章", arrowIcon.invoke(null, false), noop));
         bar.add((JButton) icon.invoke(null, "下一章", arrowIcon.invoke(null, true), noop));
         bar.add((JButton) icon.invoke(null, "自动滚动", autoIcon.invoke(null), noop));
+        bar.add((JButton) icon.invoke(null, "代码弹出框阅读", popupIcon.invoke(null), noop));
         bar.add((JComponent) sep.invoke(null));
         bar.add((JButton) icon.invoke(null, "缩小", fontIcon.invoke(null, true), noop));
         bar.add((JButton) icon.invoke(null, "放大", fontIcon.invoke(null, false), noop));
@@ -252,6 +254,8 @@ public class UiProbe {
         bar2.add((JComponent) sep.invoke(null));
         bar2.add((JButton) icon.invoke(null, "上一章", arrowIcon.invoke(null, false), noop));
         bar2.add((JButton) icon.invoke(null, "下一章", arrowIcon.invoke(null, true), noop));
+        bar2.add((JButton) icon.invoke(null, "自动滚动", autoIcon.invoke(null), noop));
+        bar2.add((JButton) icon.invoke(null, "代码弹出框阅读", popupIcon.invoke(null), noop));
         // 悬停态：看看 hover 底色
         JButton hovered = (JButton) icon.invoke(null, "暂停", pauseIcon.invoke(null), noop);
         hovered.getModel().setRollover(true);
