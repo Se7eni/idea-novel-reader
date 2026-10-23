@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.github.ideanovel.reader</id>
     <name>摸鱼小说阅读器</name>
-    <version>1.0.11</version>
+    <version>1.0.12</version>
     <vendor email="ideanovel@example.com" url="https://github.com/ideanovel">ideanovel</vendor>
 
     <description><![CDATA[
@@ -22,6 +22,7 @@
 
     <change-notes><![CDATA[
     <ul>
+        <li>1.0.12 修复弹出框一批问题：工具栏「缩小字号」按钮误用了加号图标（已对调）；提示框翻段/改字号后尺寸不再跟随，导致长文字被截断（现在内容变化时弹窗实时调整大小）；网络章节加载时提示框停在上一个片段没有反馈（现在显示「加载中」）；单段文字量从 60 字提到 120 字，一次看更多。另：手动弹窗里按空格即可开/关自动翻段；弹窗顶部新增章节名标题栏，自动翻段时显示「自动」状态；唤起快捷键增加更易按的 Ctrl+Alt+C（原 Ctrl+Alt+Shift+C 仍然有效）</li>
         <li>1.0.11 新增「状态栏阅读」（参考 chapter_reader）：当前段正文直接显示在 IDE 左下角状态栏，不占编辑区、不弹浮层，是最隐蔽的阅读方式。小键盘 + / - 翻段（弹出框开着时优先翻弹出框），翻到章尾自动进下一章；点击状态栏文字打开阅读窗口。widget 可在状态栏设置里关闭</li>
         <li>1.0.11 新增「定时弹出框阅读」：输入间隔秒数后，提示框小窗每隔几秒自动翻段、章尾自动越章，手不用碰键盘的挂机模式；间隔会记住，Esc 停止</li>
         <li>1.0.10 「代码弹出框」改版为「代码提示框」：从带行号的源码大窗换成贴在光标旁的悬停提示样式小浮窗——一次显示一小截正文和 (n/N) 段进度，正文按句末标点切成 60 字以内的小段，几乎不挡代码。滚轮/方向键翻段，翻到章尾自动进下一章、章首往前自动回上一章末尾，Esc 就散</li>
@@ -97,6 +98,7 @@
                 class="com.github.ideanovel.action.CodePopupAction"
                 text="代码提示框阅读"
                 description="在光标旁浮出一小块悬停提示样式的小窗读小说，滚轮或方向键翻段，按 Esc 关闭">
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt C"/>
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift C"/>
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>

@@ -50,6 +50,13 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
 
     private CodePopupReader(Project project) {
         this.project = project;
+        content.setResizeListener(size -> {
+            // 内容变了（翻段/字号变化）尺寸会变。JBPopup 的 setSize 直接定尺寸，
+            // 比 setPreferredSize + pack 更可靠——pack 可能因为内容组件还没重排而量错。
+            if (popup != null && !popup.isDisposed()) {
+                popup.setSize(new java.awt.Dimension(size.width, size.height));
+            }
+        });
         content.setNav(new MiniTooltipContent.Nav() {
             @Override
             public void close() {
@@ -65,6 +72,18 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
             public void prevChapter() {
                 jumpToEndPending = true;
                 NovelReaderService.getInstance().prevChapter();
+            }
+
+            @Override
+            public void toggleAutoAdvance() {
+                // 空格切换自动翻段：用上次定时弹窗填的间隔，没填过就用默认 5 秒
+                if (content.isAutoAdvancing()) {
+                    content.stopAuto();
+                } else {
+                    NovelSettingsState s = NovelSettingsState.getInstance();
+                    int seconds = (s == null || s.popupAutoSeconds <= 0) ? 5 : s.popupAutoSeconds;
+                    content.setAutoAdvance(seconds);
+                }
             }
         });
     }
@@ -184,9 +203,16 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
             content.setPlaceholder("还没有打开小说。先在「摸鱼小说」窗口里打开一本，再按 Ctrl+Alt+Shift+C。");
             return;
         }
+        String text = service.currentText();
+        // 网络章节还在异步加载：显示「加载中」而不是停在上一个片段，让用户知道它在动
+        if (service.isLoadingChapter() && (text == null || text.isEmpty())) {
+            content.setPlaceholder("正在加载章节…");
+            return;
+        }
         boolean jumpToEnd = jumpToEndPending;
         jumpToEndPending = false;
-        content.setChapter(service.currentText(), service.getChapterIndex(), jumpToEnd);
+        content.setChapterTitle(service.currentChapterTitle());
+        content.setChapter(text, service.getChapterIndex(), jumpToEnd);
     }
 
     /** 提示框字号直接用阅读字号：两处一个来源，设置页改了这里跟着变 */
@@ -266,6 +292,14 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
     public void chapterChanged(int index, String text) {
         if (isOpen()) {
             refresh();
+        }
+    }
+
+    @Override
+    public void loading(String tip) {
+        // 网络章节异步加载时，把小窗内容换成「加载中」，别停在旧片段上
+        if (isOpen()) {
+            content.setPlaceholder(tip == null ? "正在加载…" : tip);
         }
     }
 

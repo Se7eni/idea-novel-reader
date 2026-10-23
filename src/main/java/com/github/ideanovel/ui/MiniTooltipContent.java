@@ -45,10 +45,13 @@ public class MiniTooltipContent extends JPanel {
         void nextChapter();
 
         void prevChapter();
+
+        /** 请求切换自动翻段（开/关）。宿主决定用什么间隔，通常是上次填的秒数 */
+        void toggleAutoAdvance();
     }
 
     public enum ChunkAction {
-        NONE, CLOSE, NEXT_CHUNK, PREV_CHUNK, NEXT_CHAPTER, PREV_CHAPTER
+        NONE, CLOSE, NEXT_CHUNK, PREV_CHUNK, NEXT_CHAPTER, PREV_CHAPTER, TOGGLE_AUTO
     }
 
     private static final int CTRL = InputEvent.CTRL_DOWN_MASK;
@@ -66,12 +69,15 @@ public class MiniTooltipContent extends JPanel {
             {KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_DOWN, CTRL), ChunkAction.NEXT_CHAPTER},
             {KeyStroke.getKeyStroke(KeyEvent.VK_UP, CTRL), ChunkAction.PREV_CHAPTER},
             {KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_UP, CTRL), ChunkAction.PREV_CHAPTER},
+            // 空格切换自动翻段：手动看累了按一下就开始自己走，再按一下停
+            {KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0), ChunkAction.TOGGLE_AUTO},
     };
 
     /** 提示框的目标宽度（像素）。太宽就从小提示变成小报纸了 */
     private static final int PREFERRED_WIDTH = 380;
 
     private final JTextPane textPane = new JTextPane();
+    private final javax.swing.JLabel headerLabel = new javax.swing.JLabel(" ");
 
     private Nav nav = new Nav() {
         @Override
@@ -85,18 +91,32 @@ public class MiniTooltipContent extends JPanel {
         @Override
         public void prevChapter() {
         }
+
+        @Override
+        public void toggleAutoAdvance() {
+        }
     };
 
     private int fontSize = 13;
     private List<String> chunks = new ArrayList<>();
     private int chunkIndex;
     private int chapterIndex;
+    private String chapterTitle = "";
 
     /** 定时自动翻段的计时器；null 表示手动模式 */
     private javax.swing.Timer autoTimer;
 
+    /** 尺寸变化时回调宿主，让 JBPopup 重新 pack。宿主 set 进来，内容不需要知道 JBPopup 长啥样 */
+    private java.util.function.Consumer<Dimension> resizeListener;
+
     public MiniTooltipContent() {
         setLayout(new java.awt.BorderLayout());
+        // 顶部标题栏：章节名 + 自动翻段状态，让弹窗一眼知道在读哪、是不是自动在走
+        headerLabel.setOpaque(false);
+        headerLabel.setBorder(BorderFactory.createEmptyBorder(3, 11, 1, 11));
+        headerLabel.setFont(headerLabel.getFont().deriveFont(10f));
+        add(headerLabel, java.awt.BorderLayout.NORTH);
+
         textPane.setEditable(false);
         textPane.setFocusable(false);
         textPane.setOpaque(false);
@@ -106,7 +126,7 @@ public class MiniTooltipContent extends JPanel {
         // 自己要能拿焦点，按键才落到 WHEN_IN_FOCUSED_WINDOW 绑定上
         setFocusable(true);
         setFocusTraversalKeysEnabled(false);
-        setBorder(BorderFactory.createEmptyBorder(7, 11, 9, 11));
+        setBorder(BorderFactory.createEmptyBorder(0, 11, 9, 11));
         installKeyBindings();
         applyFont();
         applyThemeColors();
@@ -123,6 +143,12 @@ public class MiniTooltipContent extends JPanel {
         chunks = ChapterChunks.split(body);
         chunkIndex = jumpToEnd ? Math.max(0, chunks.size() - 1) : 0;
         render();
+    }
+
+    /** 章节标题（供顶部标题栏显示）。宿主在 chapterChanged 时顺带设置 */
+    public void setChapterTitle(String title) {
+        this.chapterTitle = title == null ? "" : title;
+        updateHeader();
     }
 
     /** 没书可读时的占位文案 */
@@ -176,6 +202,11 @@ public class MiniTooltipContent extends JPanel {
         }
     }
 
+    /** 顶部标题栏文字，探针用 */
+    public String headerText() {
+        return headerLabel.getText();
+    }
+
     public int chunkIndex() {
         return chunkIndex;
     }
@@ -198,6 +229,21 @@ public class MiniTooltipContent extends JPanel {
         }
     }
 
+    /** 内容尺寸变化时回调（宿主用来让 JBPopup 重新 pack） */
+    public void setResizeListener(java.util.function.Consumer<Dimension> listener) {
+        this.resizeListener = listener;
+    }
+
+    /** 顶部标题栏：章节名 + 自动状态。标题通常已含「第N章」，不再重复加前缀 */
+    private void updateHeader() {
+        if (chapterTitle.isEmpty()) {
+            headerLabel.setText(isAutoAdvancing() ? "▶ 自动翻段中" : "");
+            return;
+        }
+        String auto = isAutoAdvancing() ? " · 自动" : "";
+        headerLabel.setText(chapterTitle + auto);
+    }
+
     private void render() {
         String text = chunks.isEmpty() ? "" : chunks.get(chunkIndex);
         StyledDocument doc = textPane.getStyledDocument();
@@ -217,20 +263,33 @@ public class MiniTooltipContent extends JPanel {
         } catch (BadLocationException ignored) {
             // 理论上到不了
         }
+        updateHeader();
         layoutForWidth();
     }
 
     /**
-     * JTextPane 的首选高度是按当前宽度折行算的，得先给定宽度再量高度，
-     * 否则长段会把提示框撑成一条竖线或一条横带。
+     * JTextPane 的首选高度是按当前宽度折行算的，得先给定宽度再量高度。
+     *
+     * <p>这里有个 Swing 的坑：JTextPane 默认的 preferredSize 是按「最长那一行」算的，
+     * 不限定宽度时一段长文本会把弹窗撑成一条横穿屏幕的长条。
+     * 所以必须先 setSize 到目标宽度，让它按这个宽度折行，再取折行后的高度。
+     *
+     * <p>量完高度后用 setPreferredSize 告诉上层容器「我要这么大」，
+     * 并回调宿主让 JBPopup 重新 pack——否则内容变了弹窗尺寸不跟着变，
+     * 翻到更长/更短的一段时文字要么被截断（显示不全）要么留一大片空白。
      */
     private void layoutForWidth() {
-        textPane.setSize(PREFERRED_WIDTH - 24, Short.MAX_VALUE);
-        int height = textPane.getPreferredSize().height;
-        Dimension size = new Dimension(PREFERRED_WIDTH, height + 18);
+        textPane.setSize(PREFERRED_WIDTH - 24, Integer.MAX_VALUE);
+        int textHeight = textPane.getPreferredSize().height;
+        // 加上顶部标题栏的高度（标题栏在的时候才加，避免空标题时留白）
+        int headerHeight = headerLabel.getPreferredSize().height;
+        Dimension size = new Dimension(PREFERRED_WIDTH, Math.max(40, textHeight + headerHeight + 12));
         setPreferredSize(size);
         revalidate();
         repaint();
+        if (resizeListener != null) {
+            resizeListener.accept(size);
+        }
     }
 
     // ---------------- 自动翻段 ----------------
@@ -243,10 +302,12 @@ public class MiniTooltipContent extends JPanel {
     public void setAutoAdvance(int seconds) {
         stopAuto();
         if (seconds <= 0) {
+            updateHeader();
             return;
         }
         autoTimer = new javax.swing.Timer(seconds * 1000, e -> perform(ChunkAction.NEXT_CHUNK));
         autoTimer.start();
+        updateHeader();
     }
 
     /** 停止自动翻段。关窗、切手动模式都必须调，否则计时器会把弹窗的内容一直往后推 */
@@ -254,6 +315,7 @@ public class MiniTooltipContent extends JPanel {
         if (autoTimer != null) {
             autoTimer.stop();
             autoTimer = null;
+            updateHeader();
         }
     }
 
@@ -285,7 +347,16 @@ public class MiniTooltipContent extends JPanel {
         Color fg = colorOrDefault("ToolTip.foreground", new Color(0xBC, 0xBC, 0xBC));
         setBackground(bg);
         textPane.setForeground(fg);
+        // 标题栏颜色比正文淡一档，像 IDE 工具提示里的次要信息
+        headerLabel.setForeground(blend(fg, bg, 0.55f));
         repaint();
+    }
+
+    private static Color blend(Color a, Color b, float ratio) {
+        return new Color(
+                Math.round(a.getRed() * ratio + b.getRed() * (1 - ratio)),
+                Math.round(a.getGreen() * ratio + b.getGreen() * (1 - ratio)),
+                Math.round(a.getBlue() * ratio + b.getBlue() * (1 - ratio)));
     }
 
     @Override
@@ -378,6 +449,9 @@ public class MiniTooltipContent extends JPanel {
                 break;
             case PREV_CHAPTER:
                 nav.prevChapter();
+                break;
+            case TOGGLE_AUTO:
+                nav.toggleAutoAdvance();
                 break;
             default:
                 break;

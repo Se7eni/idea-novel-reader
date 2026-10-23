@@ -127,6 +127,13 @@ public final class MiniTooltipProbe {
         placeholder.setPlaceholder("还没有打开小说。");
         want(placeholder.fullText().contains("还没有打开小说"), "占位文案可读");
         want(placeholder.chunkCount() == 1, "占位算一段");
+
+        // 标题栏：设置章节标题后应显示章节名
+        MiniTooltipContent titled = new MiniTooltipContent();
+        titled.setChapterTitle("第84章 好舅舅");
+        titled.setChapter(BODY, 83, false);
+        want(titled.headerText().contains("好舅舅"), "标题栏显示章节名（%s）"
+                .formatted(titled.headerText()));
     }
 
     // ---------------- 翻段与越章 ----------------
@@ -182,6 +189,16 @@ public final class MiniTooltipProbe {
                 == MiniTooltipContent.ChunkAction.NEXT_CHAPTER, "Ctrl+↓ = 下一章");
         want(MiniTooltipContent.resolveKey(KeyStroke.getKeyStroke(KeyEvent.VK_A,
                 InputEvent.CTRL_DOWN_MASK)) == MiniTooltipContent.ChunkAction.NONE, "未定义的键不劫持");
+        want(MiniTooltipContent.resolveKey(KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0))
+                == MiniTooltipContent.ChunkAction.TOGGLE_AUTO, "空格 = 切换自动翻段");
+
+        // 空格触发 nav.toggleAutoAdvance
+        RecordingNav spaceNav = new RecordingNav();
+        MiniTooltipContent spaceContent = new MiniTooltipContent();
+        spaceContent.setNav(spaceNav);
+        spaceContent.setChapter(BODY, 0, false);
+        spaceContent.perform(MiniTooltipContent.ChunkAction.TOGGLE_AUTO);
+        want(spaceNav.toggleAuto.get() == 1, "空格回调切换自动翻段");
     }
 
     // ---------------- 滚轮 ----------------
@@ -288,12 +305,14 @@ public final class MiniTooltipProbe {
         UIManager.put("ToolTip.background", new Color(0x3C, 0x3F, 0x41));
         UIManager.put("ToolTip.foreground", new Color(0xBC, 0xBC, 0xBC));
         MiniTooltipContent dark = new MiniTooltipContent();
+        dark.setChapterTitle(TITLE);
         dark.setChapter(BODY, 83, false);
         writeShot(dark, new File(dir, "mini-tooltip-dark.png"));
 
         UIManager.put("ToolTip.background", new Color(0xF7, 0xF7, 0xF7));
         UIManager.put("ToolTip.foreground", new Color(0x1E, 0x1E, 0x1E));
         MiniTooltipContent light = new MiniTooltipContent();
+        light.setChapterTitle(TITLE);
         light.setChapter(BODY, 83, false);
         light.perform(MiniTooltipContent.ChunkAction.NEXT_CHUNK);
         writeShot(light, new File(dir, "mini-tooltip-light.png"));
@@ -337,6 +356,7 @@ public final class MiniTooltipProbe {
     private static final class RecordingNav implements MiniTooltipContent.Nav {
         final AtomicInteger nextChapter = new AtomicInteger();
         final AtomicInteger prevChapter = new AtomicInteger();
+        final AtomicInteger toggleAuto = new AtomicInteger();
 
         @Override
         public void close() {
@@ -350,6 +370,11 @@ public final class MiniTooltipProbe {
         @Override
         public void prevChapter() {
             prevChapter.incrementAndGet();
+        }
+
+        @Override
+        public void toggleAutoAdvance() {
+            toggleAuto.incrementAndGet();
         }
     }
 }

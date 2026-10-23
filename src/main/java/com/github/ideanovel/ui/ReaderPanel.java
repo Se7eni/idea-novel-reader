@@ -284,9 +284,9 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         bar.add(ToolbarButtons.separator());
 
         bar.add(commandButton(compact, "缩小字号（Ctrl+滚轮 / Ctrl+Alt+Shift+-）", "A-",
-                fontIcon(true), () -> NovelReaderService.getInstance().changeFontSize(-2)));
+                fontIcon(false), () -> NovelReaderService.getInstance().changeFontSize(-2)));
         bar.add(commandButton(compact, "放大字号（Ctrl+滚轮 / Ctrl+Alt+Shift+=）", "A+",
-                fontIcon(false), () -> NovelReaderService.getInstance().changeFontSize(2)));
+                fontIcon(true), () -> NovelReaderService.getInstance().changeFontSize(2)));
         bar.add(commandButton(compact, "打开设置", "设置", gearIcon(), this::openSettings));
         bar.add(commandButton(compact, "老板键：伪装成工作界面（Ctrl+Alt+Shift+X）", "隐身",
                 maskIcon(), this::toggleDisguise));

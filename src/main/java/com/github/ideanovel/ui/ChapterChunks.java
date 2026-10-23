@@ -15,8 +15,8 @@ import java.util.List;
  */
 public final class ChapterChunks {
 
-    /** 单段最大字符数。60 字在 13 号字下大约两行，正好是「瞟一眼」的量 */
-    public static final int MAX_CHARS = 60;
+    /** 单段最大字符数。120 字在 13 号字下大约三四行，既看得完整又不至于糊满屏幕 */
+    public static final int MAX_CHARS = 120;
 
     /** 句末标点：优先在这些字符后面断开 */
     private static final String SENTENCE_ENDS = "。！？；…!?;";
