@@ -27,7 +27,7 @@
 | 快捷键 | 作用 |
 | --- | --- |
 | `Ctrl+Alt+Shift+X` | 老板键，隐身或还原 |
-| `Ctrl+Alt+Shift+C` | 代码提示框阅读（也可用 `Ctrl+Alt+C`），再按一次关闭 |
+| `Ctrl+Alt+Shift+C` | 代码提示框阅读，再按一次关闭 |
 | `Ctrl+Alt+Shift+V` | 定时弹出框阅读（输入间隔秒数后自动翻段），再按一次关闭 |
 | 小键盘 `+` / `-` | 下一段 / 上一段（弹出框开着时优先翻弹出框，否则翻状态栏） |
 | `空格`（弹窗内） | 开/关自动翻段 |
@@ -96,7 +96,7 @@ public final class Chapter0003 {
 
 ## 代码提示框阅读：贴在代码中间的小浮窗
 
-按 **`Ctrl+Alt+Shift+C`**（或更易按的 `Ctrl+Alt+C`；工具栏「弹出」按钮、右键菜单、Tools 菜单都行），光标附近会浮出一小块提示框，就是 IDE 悬停提示的样子——顶部一行章节名、一小截正文加段进度，几乎不挡代码：
+按 **`Ctrl+Alt+Shift+C`**（工具栏「弹出」按钮、右键菜单、Tools 菜单都行），光标附近会浮出一小块提示框，就是 IDE 悬停提示的样子——顶部一行章节名、一小截正文加段进度，几乎不挡代码：
 
 ```
 ┌────────────────────────────────────────────────┐
@@ -166,7 +166,7 @@ public final class Chapter0003 {
 
 工具栏只留 8 个高频按钮，分两段用细竖线隔开：**导航**（打开/网络/书架/目录，带文字）、**翻章与滚动 + 老板键**（纯图标）。窄面板下单行放得下，不再挤成两行。
 
-被挪出去的操作都在**工具栏右键菜单**里：字号调节（也可以 `Ctrl+滚轮` 或在设置页改）、代码弹出框阅读（`Ctrl+Alt+C`）、打开设置。
+被挪出去的操作都在**工具栏右键菜单**里：字号调节（也可以 `Ctrl+滚轮` 或在设置页改）、代码弹出框阅读（`Ctrl+Alt+Shift+C`）、打开设置。
 
 按钮统一样式在 `ToolbarButtons`：平时透明无边框，悬停/按下才浮出一层圆角底色。这里有个坑——JDK 的 Metal/Nimbus 外观在 `setBorder(null)` 之后**仍然会画自己的背景层**，所以不能靠改 Border 做扁平化，必须 `setContentAreaFilled(false)` + 在 `paintComponent` 里手动画。
 
@@ -184,14 +184,14 @@ python tools/package_local.py
 python tools/package_local.py --idea "D:/你的路径/IntelliJ IDEA 2026.2.0.1"
 ```
 
-产出 `build/dist/idea-novel-reader-1.0.13.zip`，然后在 IDEA 里：
+产出 `build/dist/idea-novel-reader-1.0.14.zip`，然后在 IDEA 里：
 **Settings → Plugins → 右上角齿轮 → Install Plugin from Disk**，选中这个 zip，重启 IDE。
 
 ### 方式二：Gradle 构建
 
 ```bash
 ./gradlew buildPlugin
-# 产出 build/distributions/idea-novel-reader-1.0.13.zip
+# 产出 build/distributions/idea-novel-reader-1.0.14.zip
 ```
 
 构建依赖在 `gradle.properties` 里配置：
