@@ -162,11 +162,11 @@ public final class Chapter0003 {
 | `◀` `▶` | 上一章 / 下一章（实心三角） |
 | `↓` 带底线 | 开始自动滚动（向下箭头，跟 `▶` 方向正交，16px 下也能一眼区分） |
 | `‖` | 自动滚动进行中，点一下停止 |
-| `A+` `A-` | 放大 / 缩小字号 |
-| 齿轮 | 打开设置 |
 | 墨镜 | 老板键（隐身/还原） |
 
-工具栏纵向分三段，用细竖线隔开：**导航**（打开/网络/书架/目录，带文字）、**翻章与滚动**（纯图标）、**字号与设置**（纯图标）。
+工具栏只留 8 个高频按钮，分两段用细竖线隔开：**导航**（打开/网络/书架/目录，带文字）、**翻章与滚动 + 老板键**（纯图标）。窄面板下单行放得下，不再挤成两行。
+
+被挪出去的操作都在**工具栏右键菜单**里：字号调节（也可以 `Ctrl+滚轮` 或在设置页改）、代码弹出框阅读（`Ctrl+Alt+C`）、打开设置。
 
 按钮统一样式在 `ToolbarButtons`：平时透明无边框，悬停/按下才浮出一层圆角底色。这里有个坑——JDK 的 Metal/Nimbus 外观在 `setBorder(null)` 之后**仍然会画自己的背景层**，所以不能靠改 Border 做扁平化，必须 `setContentAreaFilled(false)` + 在 `paintComponent` 里手动画。
 
@@ -184,14 +184,14 @@ python tools/package_local.py
 python tools/package_local.py --idea "D:/你的路径/IntelliJ IDEA 2026.2.0.1"
 ```
 
-产出 `build/dist/idea-novel-reader-1.0.12.zip`，然后在 IDEA 里：
+产出 `build/dist/idea-novel-reader-1.0.13.zip`，然后在 IDEA 里：
 **Settings → Plugins → 右上角齿轮 → Install Plugin from Disk**，选中这个 zip，重启 IDE。
 
 ### 方式二：Gradle 构建
 
 ```bash
 ./gradlew buildPlugin
-# 产出 build/distributions/idea-novel-reader-1.0.12.zip
+# 产出 build/distributions/idea-novel-reader-1.0.13.zip
 ```
 
 构建依赖在 `gradle.properties` 里配置：

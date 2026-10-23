@@ -23,11 +23,8 @@ import static com.github.ideanovel.ui.ReaderIcons.fileIcon;
 import static com.github.ideanovel.ui.ReaderIcons.globeIcon;
 import static com.github.ideanovel.ui.ReaderIcons.listIcon;
 import static com.github.ideanovel.ui.ReaderIcons.shelfIcon;
-import static com.github.ideanovel.ui.ReaderIcons.fontIcon;
-import static com.github.ideanovel.ui.ReaderIcons.gearIcon;
 import static com.github.ideanovel.ui.ReaderIcons.maskIcon;
 import static com.github.ideanovel.ui.ReaderIcons.pauseIcon;
-import static com.github.ideanovel.ui.ReaderIcons.popupIcon;
 
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
@@ -247,9 +244,11 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
     /** 工具栏：导航组 + 阅读控制组，放不下时自动折行 */
     private JPanel buildToolbar() {
         // 窄工具栏放不下所有按钮，所以整体交给 WrapLayout：再窄也只会换行，不会把右侧按钮裁掉。
+        // 按钮从 12 个精简到 8 个（字号/设置/弹出框都挪去了右键菜单和快捷键），
+        // 为的就是窄面板下单行放得下，不再占两行。
         JPanel bar = new JPanel();
-        bar.setLayout(new WrapLayout(FlowLayout.LEFT, 3, 3));
-        bar.setBorder(javax.swing.BorderFactory.createEmptyBorder(3, 4, 3, 4));
+        bar.setLayout(new WrapLayout(FlowLayout.LEFT, 2, 2));
+        bar.setBorder(javax.swing.BorderFactory.createEmptyBorder(2, 4, 2, 4));
         boolean compact = isCompactToolbar();
 
         // 导航组：打开 / 网络 / 书架 / 目录，图标 + 文字，窄栏时退成纯图标
@@ -277,19 +276,10 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
                 autoScrollIcon(), this::toggleAutoScroll);
         bar.add(autoScrollButton);
         updateAutoScrollButton();
-        // 弹出框阅读：和「翻章/滚动」一组，都是阅读动作
-        bar.add(commandButton(compact, "代码弹出框阅读（Ctrl+Alt+Shift+C）", "弹出",
-                popupIcon(), this::showCodePopup));
-
-        bar.add(ToolbarButtons.separator());
-
-        bar.add(commandButton(compact, "缩小字号（Ctrl+滚轮 / Ctrl+Alt+Shift+-）", "A-",
-                fontIcon(false), () -> NovelReaderService.getInstance().changeFontSize(-2)));
-        bar.add(commandButton(compact, "放大字号（Ctrl+滚轮 / Ctrl+Alt+Shift+=）", "A+",
-                fontIcon(true), () -> NovelReaderService.getInstance().changeFontSize(2)));
-        bar.add(commandButton(compact, "打开设置", "设置", gearIcon(), this::openSettings));
         bar.add(commandButton(compact, "老板键：伪装成工作界面（Ctrl+Alt+Shift+X）", "隐身",
                 maskIcon(), this::toggleDisguise));
+        // 字号调节（Ctrl+滚轮 / 设置页）、代码弹出框（Ctrl+Alt+C）、设置页
+        // 都从工具栏挪走了：窄面板下工具栏要单行放得下，低频操作进右键菜单。
         // 工具栏被挤窄时右键可唤出全部命令，不依赖按钮是否可见
         installToolbarContextMenu(bar);
         return bar;

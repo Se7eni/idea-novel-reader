@@ -32,6 +32,10 @@ public class UiProbe {
                 + " / Label.foreground = " + UIManager.getColor("Label.foreground"));
         renderShelf("docs/screenshots/shelf-light.png", false);
         renderToolbar("docs/screenshots/toolbar-light.png", false);
+        System.out.println(failed == 0 ? "ALL PASS" : "FAILED: " + failed);
+        if (failed > 0) {
+            System.exit(1);
+        }
     }
 
     /**
@@ -207,7 +211,7 @@ public class UiProbe {
         }
         Runnable noop = () -> { };
 
-        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 3));
+        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 2));
         bar.setBackground(dark ? new Color(0x3C, 0x3F, 0x41) : new Color(0xF2, 0xF2, 0xF2));
 
         Class<?> ri = Class.forName("com.github.ideanovel.ui.ReaderIcons");
@@ -216,19 +220,19 @@ public class UiProbe {
         java.lang.reflect.Method shelfIcon = ri.getDeclaredMethod("shelfIcon");
         java.lang.reflect.Method listIcon = ri.getDeclaredMethod("listIcon");
         java.lang.reflect.Method arrowIcon = ri.getDeclaredMethod("arrowIcon", boolean.class);
-        java.lang.reflect.Method fontIcon = ri.getDeclaredMethod("fontIcon", boolean.class);
         java.lang.reflect.Method gearIcon = ri.getDeclaredMethod("gearIcon");
         java.lang.reflect.Method maskIcon = ri.getDeclaredMethod("maskIcon");
         java.lang.reflect.Method autoIcon = ri.getDeclaredMethod("autoScrollIcon");
         java.lang.reflect.Method pauseIcon = ri.getDeclaredMethod("pauseIcon");
         java.lang.reflect.Method popupIcon = ri.getDeclaredMethod("popupIcon");
         java.lang.reflect.Method[] all = {fileIcon, globeIcon, shelfIcon, listIcon, arrowIcon,
-                fontIcon, gearIcon, maskIcon, autoIcon, pauseIcon, popupIcon};
+                gearIcon, maskIcon, autoIcon, pauseIcon, popupIcon};
         for (java.lang.reflect.Method m : all) {
             m.setAccessible(true);
         }
 
-        // 第一行：导航组（图标+文字）
+        // 精简后的工具栏：8 个按钮（字号/设置/弹出框挪去了右键菜单和快捷键）。
+        // 第一张：图标 + 文字模式；第二张：窄栏纯图标模式（270px 必须单行放下）
         addTextIcon(bar, textWithIcon, "打开", fileIcon);
         addTextIcon(bar, textWithIcon, "网络", globeIcon);
         addTextIcon(bar, textWithIcon, "书架", shelfIcon);
@@ -237,15 +241,16 @@ public class UiProbe {
         bar.add((JButton) icon.invoke(null, "上一章", arrowIcon.invoke(null, false), noop));
         bar.add((JButton) icon.invoke(null, "下一章", arrowIcon.invoke(null, true), noop));
         bar.add((JButton) icon.invoke(null, "自动滚动", autoIcon.invoke(null), noop));
-        bar.add((JButton) icon.invoke(null, "代码弹出框阅读", popupIcon.invoke(null), noop));
-        bar.add((JComponent) sep.invoke(null));
-        bar.add((JButton) icon.invoke(null, "缩小", fontIcon.invoke(null, true), noop));
-        bar.add((JButton) icon.invoke(null, "放大", fontIcon.invoke(null, false), noop));
-        bar.add((JButton) icon.invoke(null, "设置", gearIcon.invoke(null), noop));
         bar.add((JButton) icon.invoke(null, "隐身", maskIcon.invoke(null), noop));
 
-        // 第二张：纯图标模式（窄栏时）
-        JPanel bar2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 3));
+        // 窄栏纯图标模式：宽度按真实窄工具窗给 270px，验证单行放得下
+        JPanel bar2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 2)) {
+            @Override
+            public Dimension getPreferredSize() {
+                Dimension d = super.getPreferredSize();
+                return new Dimension(270, d.height);
+            }
+        };
         bar2.setBackground(bar.getBackground());
         bar2.add((JButton) icon.invoke(null, "打开", fileIcon.invoke(null), noop));
         bar2.add((JButton) icon.invoke(null, "网络", globeIcon.invoke(null), noop));
@@ -255,16 +260,17 @@ public class UiProbe {
         bar2.add((JButton) icon.invoke(null, "上一章", arrowIcon.invoke(null, false), noop));
         bar2.add((JButton) icon.invoke(null, "下一章", arrowIcon.invoke(null, true), noop));
         bar2.add((JButton) icon.invoke(null, "自动滚动", autoIcon.invoke(null), noop));
-        bar2.add((JButton) icon.invoke(null, "代码弹出框阅读", popupIcon.invoke(null), noop));
         // 悬停态：看看 hover 底色
-        JButton hovered = (JButton) icon.invoke(null, "暂停", pauseIcon.invoke(null), noop);
+        JButton hovered = (JButton) icon.invoke(null, "隐身", maskIcon.invoke(null), noop);
         hovered.getModel().setRollover(true);
         bar2.add(hovered);
-        bar2.add((JComponent) sep.invoke(null));
-        bar2.add((JButton) icon.invoke(null, "缩小", fontIcon.invoke(null, true), noop));
-        bar2.add((JButton) icon.invoke(null, "放大", fontIcon.invoke(null, false), noop));
-        bar2.add((JButton) icon.invoke(null, "设置", gearIcon.invoke(null), noop));
-        bar2.add((JButton) icon.invoke(null, "隐身", maskIcon.invoke(null), noop));
+
+        // 断言级验证：8 个按钮 + 1 分隔线在 270px 内的总宽度
+        int total = 0;
+        for (Component c : bar2.getComponents()) {
+            total += c.getPreferredSize().width + 2;
+        }
+        want(total <= 270, "窄栏 270px 单行放得下（总宽 " + total + "px）");
 
         // 用 BorderLayout 而不是 BoxLayout：BoxLayout(Y_AXIS) 会让子组件保持
         // 自己的 preferredSize 宽度，从这里加宽 host 并不会加宽 bar，
@@ -273,15 +279,34 @@ public class UiProbe {
         host.setBackground(bar.getBackground());
         host.add(bar, java.awt.BorderLayout.NORTH);
         host.add(bar2, java.awt.BorderLayout.CENTER);
+        host.add(makeGearRow(gearIcon, icon, noop), java.awt.BorderLayout.SOUTH);
         int w = 620;
-        host.setSize(w, 76);
+        host.setSize(w, 100);
         host.addNotify();
         host.validate();
-        BufferedImage img = new BufferedImage(w, 76, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage img = new BufferedImage(w, 100, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = img.createGraphics();
         host.printAll(g);
         g.dispose();
         ImageIO.write(img, "png", new File(out));
         System.out.println("-> " + out);
+    }
+
+    /** 被挪出工具栏的按钮（弹出框/设置）现在住在右键菜单里，这里渲染一下留档 */
+    private static JPanel makeGearRow(java.lang.reflect.Method gearIcon,
+                                      java.lang.reflect.Method icon, Runnable noop) throws Exception {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 2));
+        row.setBackground(new Color(0x2B, 0x2B, 0x2B));
+        row.add((javax.swing.JComponent) icon.invoke(null, "老板键说明：这些按钮在右键菜单里", gearIcon.invoke(null), noop));
+        return row;
+    }
+
+    private static int failed;
+
+    private static void want(boolean ok, String what) {
+        System.out.println((ok ? "  ok   " : "  FAIL ") + what);
+        if (!ok) {
+            failed++;
+        }
     }
 }

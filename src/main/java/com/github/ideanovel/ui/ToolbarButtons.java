@@ -130,7 +130,11 @@ final class ToolbarButtons {
         JButton b = new FlatButton(null);
         b.setIcon(icon);
         b.setToolTipText(tooltip);
-        b.setPreferredSize(new Dimension(32, HEIGHT));
+        // 28px：16px 图标 + 左右各 6px。工具栏精简后 8 个按钮要在 270px 窄面板单行放下。
+        // 内边距也要收窄：默认的左右 8px 会把 16px 图标挤裁掉
+        b.setPreferredSize(new Dimension(28, HEIGHT));
+        b.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
+        b.setMargin(new Insets(2, 5, 2, 5));
         b.addActionListener(e -> action.run());
         return b;
     }
@@ -151,7 +155,7 @@ final class ToolbarButtons {
             }
         };
         p.setOpaque(false);
-        p.setPreferredSize(new Dimension(9, HEIGHT));
+        p.setPreferredSize(new Dimension(7, HEIGHT));
         return p;
     }
 
