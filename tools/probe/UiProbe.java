@@ -279,26 +279,16 @@ public class UiProbe {
         host.setBackground(bar.getBackground());
         host.add(bar, java.awt.BorderLayout.NORTH);
         host.add(bar2, java.awt.BorderLayout.CENTER);
-        host.add(makeGearRow(gearIcon, icon, noop), java.awt.BorderLayout.SOUTH);
         int w = 620;
-        host.setSize(w, 100);
+        host.setSize(w, 76);
         host.addNotify();
         host.validate();
-        BufferedImage img = new BufferedImage(w, 100, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage img = new BufferedImage(w, 76, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = img.createGraphics();
         host.printAll(g);
         g.dispose();
         ImageIO.write(img, "png", new File(out));
         System.out.println("-> " + out);
-    }
-
-    /** 被挪出工具栏的按钮（弹出框/设置）现在住在右键菜单里，这里渲染一下留档 */
-    private static JPanel makeGearRow(java.lang.reflect.Method gearIcon,
-                                      java.lang.reflect.Method icon, Runnable noop) throws Exception {
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 2));
-        row.setBackground(new Color(0x2B, 0x2B, 0x2B));
-        row.add((javax.swing.JComponent) icon.invoke(null, "老板键说明：这些按钮在右键菜单里", gearIcon.invoke(null), noop));
-        return row;
     }
 
     private static int failed;
