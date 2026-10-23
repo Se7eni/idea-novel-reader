@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.github.ideanovel.reader</id>
     <name>摸鱼小说阅读器</name>
-    <version>1.0.16</version>
+    <version>1.0.17</version>
     <vendor email="ideanovel@example.com" url="https://github.com/ideanovel">ideanovel</vendor>
 
     <description><![CDATA[
@@ -22,6 +22,7 @@
 
     <change-notes><![CDATA[
     <ul>
+        <li>1.0.17 修复「快捷键只在阅读界面生效」：Ctrl+Alt+Shift+C 其实是 IDEA 自带的「复制引用」（Copy Reference）快捷键，在编辑器里按会被抢走、只有光标在阅读侧边栏时才轮到我们。代码弹出框快捷键改为 Ctrl+Alt+Shift+R（默认键位空闲，全局生效），原 C 键作废</li>
         <li>1.0.16 代码弹出框入口统一为「定时自动换句」：按 Ctrl+Alt+Shift+C 先弹输入框填自动换句秒数（输入框用校验器限制只能输入正整数，输非法值点不了确定），确定后一句一行自动换句；再按一次 Ctrl+Alt+Shift+C 关闭。原 Ctrl+Alt+Shift+V「定时弹出框」入口与定时动作已移除（功能并入主入口）</li>
         <li>1.0.15 代码弹出框体验改版：① 单行显示——一次一句不折行，弹窗宽度随文本自适应，不再一大块挡代码；② 弹窗内按 S 弹输入框设置自动换段间隔并立即开始，空格开/关自动（间隔记住）；③ 关闭时记住读到哪一章第几句，下次打开接着读（按书区分）；④ 点击弹窗外部不再关闭弹窗——挂机自动换段时鼠标可以放心去写代码，关掉靠 Esc 或再按一次快捷键</li>
         <li>1.0.14 修复：代码提示框快捷键改回 Ctrl+Alt+Shift+C。上一版加的 Ctrl+Alt+C 与 IDEA 自带的「提取常量」（Extract Constant）重构快捷键冲突，在编辑器里按会被抢走，导致按了没反应；且该组合还常被显卡驱动/输入法等系统程序拦截。现在只保留四键 Ctrl+Alt+Shift+C（与老板键同区，不会被 Extract 系列占用）</li>
@@ -102,7 +103,7 @@
                 class="com.github.ideanovel.action.CodePopupAction"
                 text="代码弹出框阅读"
                 description="弹输入框设置自动换句秒数后，光标旁浮出一句一行的小窗自动换句，按 Esc 或再按一次关闭">
-            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift C"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift R"/>
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
 

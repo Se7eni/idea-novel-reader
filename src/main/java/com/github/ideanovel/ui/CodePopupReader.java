@@ -261,7 +261,7 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
         Book book = service.getBook();
         if (book == null) {
             jumpToEndPending = false;
-            content.setPlaceholder("还没有打开小说。先在「摸鱼小说」窗口里打开一本，再按 Ctrl+Alt+Shift+C。");
+            content.setPlaceholder("还没有打开小说。先在「摸鱼小说」窗口里打开一本，再按 Ctrl+Alt+Shift+R。");
             return;
         }
         String text = service.currentText();

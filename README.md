@@ -18,7 +18,7 @@
 | 自动滚动 | 按设定速度匀速下滚，滚到底自动翻下一章 |
 | 老板键 | `Ctrl+Alt+Shift+X`，一键切换成 Maven 构建日志 / Java 源码 / 终端输出 / 源码注释 |
 | 源码注释伪装 | 正文渲染成 Java 文件的 Javadoc 注释块，看代码的同时其实还在读小说，详见下文 |
-| 代码提示框 | `Ctrl+Alt+Shift+C` 弹输入框设秒数后，光标旁浮出一句一行的小窗自动换句，详见下文 |
+| 代码提示框 | `Ctrl+Alt+Shift+R` 弹输入框设秒数后，光标旁浮出一句一行的小窗自动换句，详见下文 |
 | 状态栏阅读 | 当前段正文显示在 IDE 左下角状态栏，小键盘 `+`/`-` 翻段，详见下文 |
 
 ## 快捷键
@@ -26,7 +26,7 @@
 | 快捷键 | 作用 |
 | --- | --- |
 | `Ctrl+Alt+Shift+X` | 老板键，隐身或还原 |
-| `Ctrl+Alt+Shift+C` | 代码弹出框阅读：弹秒数输入框→自动换句，再按一次关闭 |
+| `Ctrl+Alt+Shift+R` | 代码弹出框阅读：弹秒数输入框→自动换句，再按一次关闭 |
 | 小键盘 `+` / `-` | 下一段 / 上一段（弹出框开着时优先翻弹出框，否则翻状态栏） |
 | `空格`（弹窗内） | 开/关自动翻段 |
 | `Ctrl+Alt+→` | 下一章 |
@@ -94,7 +94,7 @@ public final class Chapter0003 {
 
 ## 代码提示框阅读：一句一行，自动换句
 
-按 **`Ctrl+Alt+Shift+C`**（右键菜单、Tools 菜单、工具栏都行），先弹出输入框让你填**自动换句间隔秒数**（只能输入正整数，上次填的会记住），确定后光标附近浮出一小块提示框，开始一句一行自动换句：
+按 **`Ctrl+Alt+Shift+R`**（右键菜单、Tools 菜单、工具栏都行），先弹出输入框让你填**自动换句间隔秒数**（只能输入正整数，上次填的会记住），确定后光标附近浮出一小块提示框，开始一句一行自动换句：
 
 ```
 ┌──────────────────────────────────────────┐
@@ -109,7 +109,7 @@ public final class Chapter0003 {
 - **手动翻句**：`↓` / `→` / `PgDn` / 滚轮向下，`↑` / `←` / `PgUp` / 滚轮向上；小键盘 `+` / `-` 全局有效（鼠标不在弹窗上也能翻）
 - **记忆位置**：关掉时记住读到哪章哪句，下次打开接着读（按书区分）
 - **直接翻章**：`Ctrl+↓` / `Ctrl+↑`；全局翻章快捷键（`Ctrl+Alt+→/←`）同样有效
-- **关闭**：`Esc` 或再按一次 `Ctrl+Alt+Shift+C`。**点弹窗外面不会关**——自动换句时鼠标可以放心去写代码，弹窗一直挂着
+- **关闭**：`Esc` 或再按一次 `Ctrl+Alt+Shift+R`。**点弹窗外面不会关**——自动换句时鼠标可以放心去写代码，弹窗一直挂着
 
 什么时候用它：写代码的间隙想瞟一眼，或者干脆开着自动换句一边写代码一边瞟。它是三种阅读方式里最轻、最不显眼的一种。
 
@@ -160,7 +160,7 @@ public final class Chapter0003 {
 
 工具栏只留 8 个高频按钮，分两段用细竖线隔开：**导航**（打开/网络/书架/目录，带文字）、**翻章与滚动 + 老板键**（纯图标）。窄面板下单行放得下，不再挤成两行。
 
-被挪出去的操作都在**工具栏右键菜单**里：字号调节（也可以 `Ctrl+滚轮` 或在设置页改）、代码弹出框阅读（`Ctrl+Alt+Shift+C`）、打开设置。
+被挪出去的操作都在**工具栏右键菜单**里：字号调节（也可以 `Ctrl+滚轮` 或在设置页改）、代码弹出框阅读（`Ctrl+Alt+Shift+R`）、打开设置。
 
 按钮统一样式在 `ToolbarButtons`：平时透明无边框，悬停/按下才浮出一层圆角底色。这里有个坑——JDK 的 Metal/Nimbus 外观在 `setBorder(null)` 之后**仍然会画自己的背景层**，所以不能靠改 Border 做扁平化，必须 `setContentAreaFilled(false)` + 在 `paintComponent` 里手动画。
 
@@ -178,14 +178,14 @@ python tools/package_local.py
 python tools/package_local.py --idea "D:/你的路径/IntelliJ IDEA 2026.2.0.1"
 ```
 
-产出 `build/dist/idea-novel-reader-1.0.16.zip`，然后在 IDEA 里：
+产出 `build/dist/idea-novel-reader-1.0.17.zip`，然后在 IDEA 里：
 **Settings → Plugins → 右上角齿轮 → Install Plugin from Disk**，选中这个 zip，重启 IDE。
 
 ### 方式二：Gradle 构建
 
 ```bash
 ./gradlew buildPlugin
-# 产出 build/distributions/idea-novel-reader-1.0.16.zip
+# 产出 build/distributions/idea-novel-reader-1.0.17.zip
 ```
 
 构建依赖在 `gradle.properties` 里配置：
