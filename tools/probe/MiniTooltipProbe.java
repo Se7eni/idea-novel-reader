@@ -116,11 +116,11 @@ public final class MiniTooltipProbe {
         want(content.chunkIndex() == 0, "初始落在第 1 段");
         want(content.chapterIndex() == 83, "章号被记住（%d）".formatted(content.chapterIndex()));
 
-        // 尺寸：宽度固定上限，高度按折行算，不允许出现离谱比例
+        // 尺寸：单行不折行，宽度随文本自适应、上限封顶，高度固定一行
         java.awt.Dimension d = content.laidOutSize();
-        want(d.width <= 400, "宽度收在上限内（%d px）".formatted(d.width));
-        want(d.height > 0 && d.height < 300,
-                "高度按内容折行计算（%d px）".formatted(d.height));
+        want(d.width <= 620, "宽度封顶在上限内（%d px）".formatted(d.width));
+        want(d.height > 0 && d.height < 120,
+                "高度是一行（%d px）".formatted(d.height));
 
         // 占位（没开书）
         MiniTooltipContent placeholder = new MiniTooltipContent();
@@ -191,6 +191,8 @@ public final class MiniTooltipProbe {
                 InputEvent.CTRL_DOWN_MASK)) == MiniTooltipContent.ChunkAction.NONE, "未定义的键不劫持");
         want(MiniTooltipContent.resolveKey(KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0))
                 == MiniTooltipContent.ChunkAction.TOGGLE_AUTO, "空格 = 切换自动翻段");
+        want(MiniTooltipContent.resolveKey(KeyStroke.getKeyStroke(KeyEvent.VK_S, 0))
+                == MiniTooltipContent.ChunkAction.CHANGE_AUTO, "S = 设置秒数自动换段");
 
         // 空格触发 nav.toggleAutoAdvance
         RecordingNav spaceNav = new RecordingNav();
@@ -199,6 +201,19 @@ public final class MiniTooltipProbe {
         spaceContent.setChapter(BODY, 0, false);
         spaceContent.perform(MiniTooltipContent.ChunkAction.TOGGLE_AUTO);
         want(spaceNav.toggleAuto.get() == 1, "空格回调切换自动翻段");
+        spaceContent.perform(MiniTooltipContent.ChunkAction.CHANGE_AUTO);
+        want(spaceNav.changeAuto.get() == 1, "S 回调设置秒数");
+
+        // pendingChunk：指定从第几段开始（记忆位置恢复）
+        MiniTooltipContent restored = new MiniTooltipContent();
+        restored.setChapter(BODY, 0, false);
+        int totalForRestore = restored.chunkCount();
+        restored.setPendingChunk(totalForRestore - 1);
+        restored.setChapter(BODY, 0, false);
+        want(restored.chunkIndex() == totalForRestore - 1, "pendingChunk 落到指定段（%d/%d）"
+                .formatted(restored.chunkIndex() + 1, totalForRestore));
+        restored.setChapter(BODY, 0, false);
+        want(restored.chunkIndex() == 0, "pendingChunk 只生效一次");
     }
 
     // ---------------- 滚轮 ----------------
@@ -357,6 +372,7 @@ public final class MiniTooltipProbe {
         final AtomicInteger nextChapter = new AtomicInteger();
         final AtomicInteger prevChapter = new AtomicInteger();
         final AtomicInteger toggleAuto = new AtomicInteger();
+        final AtomicInteger changeAuto = new AtomicInteger();
 
         @Override
         public void close() {
@@ -375,6 +391,11 @@ public final class MiniTooltipProbe {
         @Override
         public void toggleAutoAdvance() {
             toggleAuto.incrementAndGet();
+        }
+
+        @Override
+        public void changeAutoSeconds() {
+            changeAuto.incrementAndGet();
         }
     }
 }

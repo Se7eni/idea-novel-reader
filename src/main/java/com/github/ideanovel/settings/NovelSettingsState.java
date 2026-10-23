@@ -63,6 +63,11 @@ public class NovelSettingsState implements PersistentStateComponent<NovelSetting
     /** 定时弹出框的翻段间隔，单位秒。上次输入的值记住，下次默认填上 */
     public int popupAutoSeconds = 5;
 
+    /** 弹出框上次读到哪：书 id + 章节 + 段位置。下次打开接着读 */
+    public String popupBookId = "";
+    public int popupChapterIndex = 0;
+    public int popupChunkIndex = 0;
+
     /** 阅读进度历史 */
     public List<ReadingProgress> progress = new ArrayList<>();
 

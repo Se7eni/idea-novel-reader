@@ -48,10 +48,13 @@ public class MiniTooltipContent extends JPanel {
 
         /** 请求切换自动翻段（开/关）。宿主决定用什么间隔，通常是上次填的秒数 */
         void toggleAutoAdvance();
+
+        /** 请求设置间隔秒数并开始自动翻段。宿主弹输入框 */
+        void changeAutoSeconds();
     }
 
     public enum ChunkAction {
-        NONE, CLOSE, NEXT_CHUNK, PREV_CHUNK, NEXT_CHAPTER, PREV_CHAPTER, TOGGLE_AUTO
+        NONE, CLOSE, NEXT_CHUNK, PREV_CHUNK, NEXT_CHAPTER, PREV_CHAPTER, TOGGLE_AUTO, CHANGE_AUTO
     }
 
     private static final int CTRL = InputEvent.CTRL_DOWN_MASK;
@@ -71,10 +74,12 @@ public class MiniTooltipContent extends JPanel {
             {KeyStroke.getKeyStroke(KeyEvent.VK_PAGE_UP, CTRL), ChunkAction.PREV_CHAPTER},
             // 空格切换自动翻段：手动看累了按一下就开始自己走，再按一下停
             {KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0), ChunkAction.TOGGLE_AUTO},
+            // S 设置间隔秒数并开始自动翻段（挂机阅读的入口）
+            {KeyStroke.getKeyStroke(KeyEvent.VK_S, 0), ChunkAction.CHANGE_AUTO},
     };
 
-    /** 提示框的目标宽度（像素）。太宽就从小提示变成小报纸了 */
-    private static final int PREFERRED_WIDTH = 380;
+    /** 弹窗宽度上限（像素）。单行文字再长也不超过这个，超出才折行 */
+    private static final int MAX_WIDTH = 600;
 
     private final JTextPane textPane = new JTextPane();
     private final javax.swing.JLabel headerLabel = new javax.swing.JLabel(" ");
@@ -95,6 +100,10 @@ public class MiniTooltipContent extends JPanel {
         @Override
         public void toggleAutoAdvance() {
         }
+
+        @Override
+        public void changeAutoSeconds() {
+        }
     };
 
     private int fontSize = 13;
@@ -102,6 +111,9 @@ public class MiniTooltipContent extends JPanel {
     private int chunkIndex;
     private int chapterIndex;
     private String chapterTitle = "";
+
+    /** 宿主在 chapterChanged 前指定的「从第几段开始」（记忆位置恢复用），-1 表示从头/末尾 */
+    private int pendingChunk = -1;
 
     /** 定时自动翻段的计时器；null 表示手动模式 */
     private javax.swing.Timer autoTimer;
@@ -141,8 +153,18 @@ public class MiniTooltipContent extends JPanel {
     public void setChapter(String body, int chapterIndexOf, boolean jumpToEnd) {
         this.chapterIndex = Math.max(0, chapterIndexOf);
         chunks = ChapterChunks.split(body);
-        chunkIndex = jumpToEnd ? Math.max(0, chunks.size() - 1) : 0;
+        if (pendingChunk >= 0 && pendingChunk < chunks.size()) {
+            chunkIndex = pendingChunk;
+        } else {
+            chunkIndex = jumpToEnd ? Math.max(0, chunks.size() - 1) : 0;
+        }
+        pendingChunk = -1;
         render();
+    }
+
+    /** 指定下次 setChapter 从第几段开始（记忆位置恢复）。只生效一次 */
+    public void setPendingChunk(int index) {
+        this.pendingChunk = index;
     }
 
     /** 章节标题（供顶部标题栏显示）。宿主在 chapterChanged 时顺带设置 */
@@ -268,22 +290,19 @@ public class MiniTooltipContent extends JPanel {
     }
 
     /**
-     * JTextPane 的首选高度是按当前宽度折行算的，得先给定宽度再量高度。
+     * 单行布局：正文不折行，一次只显示一行（一句），宽度跟着文本走，上限封顶。
      *
-     * <p>这里有个 Swing 的坑：JTextPane 默认的 preferredSize 是按「最长那一行」算的，
-     * 不限定宽度时一段长文本会把弹窗撑成一条横穿屏幕的长条。
-     * 所以必须先 setSize 到目标宽度，让它按这个宽度折行，再取折行后的高度。
-     *
-     * <p>量完高度后用 setPreferredSize 告诉上层容器「我要这么大」，
-     * 并回调宿主让 JBPopup 重新 pack——否则内容变了弹窗尺寸不跟着变，
-     * 翻到更长/更短的一段时文字要么被截断（显示不全）要么留一大片空白。
+     * <p>JTextPane 默认会按容器宽度折行（ParagraphView 响应宽度），所以量单行尺寸时
+     * 要给一个远超文本的宽度，让它不折，拿到「一行」的真实宽高；再把弹窗宽度
+     * 定为「文本单行宽 + 内边距」，上限 MAX_WIDTH，超出才折。
      */
     private void layoutForWidth() {
-        textPane.setSize(PREFERRED_WIDTH - 24, Integer.MAX_VALUE);
-        int textHeight = textPane.getPreferredSize().height;
-        // 加上顶部标题栏的高度（标题栏在的时候才加，避免空标题时留白）
+        textPane.setSize(MAX_WIDTH, Integer.MAX_VALUE);
+        int lineWidth = textPane.getPreferredSize().width;
+        int lineHeight = textPane.getPreferredSize().height;
         int headerHeight = headerLabel.getPreferredSize().height;
-        Dimension size = new Dimension(PREFERRED_WIDTH, Math.max(40, textHeight + headerHeight + 12));
+        int width = Math.min(MAX_WIDTH, lineWidth + 24);
+        Dimension size = new Dimension(width, Math.max(36, lineHeight + headerHeight + 12));
         setPreferredSize(size);
         revalidate();
         repaint();
@@ -452,6 +471,9 @@ public class MiniTooltipContent extends JPanel {
                 break;
             case TOGGLE_AUTO:
                 nav.toggleAutoAdvance();
+                break;
+            case CHANGE_AUTO:
+                nav.changeAutoSeconds();
                 break;
             default:
                 break;

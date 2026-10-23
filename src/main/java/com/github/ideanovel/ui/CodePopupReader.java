@@ -44,6 +44,9 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
      */
     private boolean jumpToEndPending;
 
+    /** 恢复位置时，若目标章节 != 当前章节，先把段位置暂存到这里，等 chapterChanged 到达再落地 */
+    private int pendingChunkOnRestore = -1;
+
     private JBPopup popup;
     private boolean disposed;
     private boolean listenerAttached;
@@ -76,7 +79,7 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
 
             @Override
             public void toggleAutoAdvance() {
-                // 空格切换自动翻段：用上次定时弹窗填的间隔，没填过就用默认 5 秒
+                // 空格切换自动翻段：用上次填的间隔，没填过就用默认 5 秒
                 if (content.isAutoAdvancing()) {
                     content.stopAuto();
                 } else {
@@ -84,6 +87,32 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
                     int seconds = (s == null || s.popupAutoSeconds <= 0) ? 5 : s.popupAutoSeconds;
                     content.setAutoAdvance(seconds);
                 }
+            }
+
+            @Override
+            public void changeAutoSeconds() {
+                // S 键：输入间隔秒数并开始自动翻段
+                NovelSettingsState s = NovelSettingsState.getInstance();
+                int last = (s == null || s.popupAutoSeconds <= 0) ? 5 : s.popupAutoSeconds;
+                String input = Messages.showInputDialog(project,
+                        "自动换段间隔（正整数/秒）", "摸鱼小说 · 代码弹出框",
+                        Messages.getQuestionIcon(), String.valueOf(last), null);
+                if (input == null) {
+                    return;
+                }
+                try {
+                    int seconds = Integer.parseInt(input.trim());
+                    if (seconds > 0) {
+                        if (s != null) {
+                            s.popupAutoSeconds = seconds;
+                        }
+                        content.setAutoAdvance(seconds);
+                        return;
+                    }
+                } catch (NumberFormatException ignored) {
+                    // 落到下面的错误提示
+                }
+                Messages.showErrorDialog(project, "间隔必须是正整数（秒）", "摸鱼小说");
             }
         });
     }
@@ -170,18 +199,19 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
     }
 
     private void show() {
-        content.setFontSize(fontFromSettings());
+        restorePosition();
         refresh();
 
-        // 和大窗的区别：不可缩放、不可拖动、不记尺寸——提示框就该是提示框的样子，
-        // 大小由内容决定，位置每次都重新贴到光标旁。
+        // 不可缩放、不可拖动、不记尺寸——提示框就该是提示框的样子，大小由内容决定。
+        // 注意：setCancelOnClickOutside(false)——挂机自动翻段时用户要一边看代码一边瞟弹窗，
+        // 点代码不该把弹窗关掉；关掉靠 Esc 或再按一次快捷键。
         popup = JBPopupFactory.getInstance()
                 .createComponentPopupBuilder(content, content)
                 .setResizable(false)
                 .setMovable(false)
-                // 拿到焦点 Esc/方向键才落到内容自己的键位表上
+                // 拿到焦点 Esc/方向键/空格/S 才落到内容自己的键位表上
                 .setRequestFocus(true)
-                .setCancelOnClickOutside(true)
+                .setCancelOnClickOutside(false)
                 .setCancelKeyEnabled(true)
                 .setCancelCallback(() -> {
                     detach();
@@ -192,6 +222,45 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
         attach();
         active = this;
         popup.show(anchorPoint());
+    }
+
+    /** 打开时恢复到上次读到的章节 + 段位置（记忆位置只按当前书匹配） */
+    private void restorePosition() {
+        NovelReaderService service = NovelReaderService.getInstance();
+        Book book = service.getBook();
+        NovelSettingsState s = NovelSettingsState.getInstance();
+        if (book == null || s == null || s.popupBookId == null) {
+            return;
+        }
+        if (!s.popupBookId.equals(book.getId())) {
+            return;
+        }
+        int targetChapter = s.popupChapterIndex;
+        if (targetChapter < 0 || targetChapter >= book.getChapters().size()) {
+            return;
+        }
+        if (targetChapter != service.getChapterIndex()) {
+            // 章节不同：跳章是异步的（chapterChanged 稍后到），段位置先暂存，
+            // 等 chapterChanged 到达再落到内容里，避免被旧章节的首次渲染消费掉
+            pendingChunkOnRestore = s.popupChunkIndex;
+            service.gotoChapter(targetChapter);
+        } else {
+            // 章节相同：直接指定段位置，show() 里的 refresh() 会带着它重渲染
+            content.setPendingChunk(s.popupChunkIndex);
+        }
+    }
+
+    /** 关掉时记住当前书 + 章节 + 段位置 */
+    private void savePosition() {
+        NovelReaderService service = NovelReaderService.getInstance();
+        Book book = service.getBook();
+        NovelSettingsState s = NovelSettingsState.getInstance();
+        if (book == null || s == null) {
+            return;
+        }
+        s.popupBookId = book.getId();
+        s.popupChapterIndex = service.getChapterIndex();
+        s.popupChunkIndex = content.chunkIndex();
     }
 
     /** 章节正文变了就重新切段。jumpToEndPending 只消费一次 */
@@ -213,13 +282,6 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
         jumpToEndPending = false;
         content.setChapterTitle(service.currentChapterTitle());
         content.setChapter(text, service.getChapterIndex(), jumpToEnd);
-    }
-
-    /** 提示框字号直接用阅读字号：两处一个来源，设置页改了这里跟着变 */
-    private int fontFromSettings() {
-        NovelSettingsState s = NovelSettingsState.getInstance();
-        int size = (s == null || s.fontSize <= 0) ? 16 : s.fontSize;
-        return Math.max(NovelReaderService.MIN_FONT_SIZE, Math.min(NovelReaderService.MAX_FONT_SIZE, size));
     }
 
     /**
@@ -277,8 +339,9 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
         }
     }
 
-    /** 关掉提示框。Esc、点外面、再按一次快捷键、项目关闭都会走到这里，所以必须幂等 */
+    /** 关掉提示框。Esc、再按一次快捷键、项目关闭都会走到这里，所以必须幂等 */
     public void close() {
+        savePosition();
         content.stopAuto();
         if (isOpen()) {
             popup.cancel();
@@ -291,6 +354,10 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
     @Override
     public void chapterChanged(int index, String text) {
         if (isOpen()) {
+            if (pendingChunkOnRestore >= 0) {
+                content.setPendingChunk(pendingChunkOnRestore);
+                pendingChunkOnRestore = -1;
+            }
             refresh();
         }
     }
@@ -312,14 +379,13 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
 
     @Override
     public void settingsChanged() {
-        if (isOpen()) {
-            content.setFontSize(fontFromSettings());
-        }
+        // 弹窗字号固定 13，不跟阅读字号联动（单行显示需要字号可控），设置页改动这里不处理
     }
 
     @Override
     public void dispose() {
         disposed = true;
+        savePosition();
         content.stopAuto();
         if (popup != null && !popup.isDisposed()) {
             popup.cancel();
