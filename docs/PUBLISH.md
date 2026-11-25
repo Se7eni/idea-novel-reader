@@ -154,3 +154,48 @@ keytool -genkeypair -keystore chain.ks -storetype PKCS12 \
 gradle publishPlugin
 ```
 不过推荐走 CI，网络干净且 token 不落地到本地。
+
+---
+
+## 实战记录（2026-11-25 首次上架）
+
+- **pluginId**：`36457`
+- **插件页**：https://plugins.jetbrains.com/plugin/36457-se7eni-novel-reader
+- **首发版本**：1.0.20（网页手动上传，已提交审核，最多 2 个工作日）
+- **vendor**：ideanovel（Non-trader）
+- **插件名**：Se7eni Novel Reader
+
+### 命名与描述的四条硬规则（踩坑记录）
+
+Marketplace 的校验**一次只报一个错**，定名前务必先自查：
+
+1. **名称只能是纯 ASCII**：只允许字母、数字、空格和 `.,+-/:()#&[]|`，中文会被拒。
+2. **名称不能含商标词**：`IDEA`、`IntelliJ`、`JetBrains` 等受保护词不能出现在名称里。
+3. **名称必须全局唯一**：`Novel Reader` 已被占用（"摸鱼"概念也被 `zero-moyu` 抢先）。
+   定名前先查重：
+   `https://plugins.jetbrains.com/api/searchPlugins?search=<关键词>`
+4. **description 必须以拉丁字符开头且 ≥ 40 字符**：中文开头的 `<p>` 不行，
+   第一个 `<p>` 里要放英文段落。
+
+### 首次上传必须手动
+
+`gradle publishPlugin` 在插件条目不存在时会报：
+
+> `Cannot find plugin. Note that you need to upload the plugin to the repository at least once manually`
+
+即使用 Upload API（`POST /api/updates/upload` + `xmlId`）也一样，因为条目不存在。
+所以**第一次必须走网页 Upload Plugin 页面**（选文件 + 填 License/Tags/Source URL）。
+之后 CI 的 `publishPlugin` 才能正常工作。
+
+> Tags 是**必填**项，且列表是技术向分类（没有"阅读/娱乐"），
+> 选「工具集成」（Tool Integration）或「用户界面」最贴切。
+
+### 后续发布（CI）
+
+条目已存在，之后每次发版：
+
+1. bump `gradle.properties` 的 `pluginVersion`（**不能重复上传同版本**）
+2. 推送 tag 或手动触发 `Publish Plugin` workflow
+3. CI 自动编译（双 JDK：Gradle 跑 21、编译 toolchain 用 25）+ 签名 + 上传
+
+⚠️ 如果 stable 版本还在审核中，发新版可能排队；想先验证流水线可改用 beta 频道。
