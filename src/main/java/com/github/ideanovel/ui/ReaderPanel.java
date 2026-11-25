@@ -468,12 +468,16 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
     // ---------------- 渲染 ----------------
 
     private void setChapterText(String text) {
+        setChapterText(text, 0f);
+    }
+
+    private void setChapterText(String text, float ratio) {
         textPane.setText(text == null ? "" : text);
         applyStyle();
-        scrollToStart();
+        scrollToRatio(ratio);
         // 新文本刚灌进去时还没走完布局，滚动条的 max 可能还是旧值，
-        // 所以等 Swing 排完版再拉一次，确保真的停在第一行。
-        SwingUtilities.invokeLater(this::scrollToStart);
+        // 所以等 Swing 排完版再拉一次，确保真的停在目标位置。
+        SwingUtilities.invokeLater(() -> scrollToRatio(ratio));
     }
 
     /** 把字号、行距、配色、缩进应用上去 */
@@ -808,25 +812,34 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         chapterList.setChapters(book.getChapters());
         titleLabel.setText(book.getTitle() + "  [" + book.getType().displayName() + "]");
         applyChapterListVisibility();
+        // 换书了：清掉上一本书的章号与阅读比例，否则新书第 0 章会被当成「同章刷新」，
+        // 把旧书的滚动位置套上去
+        lastIndex = -1;
+        lastRatio = 0f;
+        autoNextFired = false;
         updateStatus();
     }
 
     @Override
     public void chapterChanged(int index, String text) {
+        // 网络章节是异步加载的：同一章会再触发一次 chapterChanged（内容到达）。
+        // 这种「同章刷新」必须保住阅读位置，否则会把读到一半的人打回章首。
+        boolean sameChapter = lastIndex == index;
         if (lastIndex >= 0 && lastIndex != index) {
             NovelReaderService.getInstance().saveProgressAt(lastIndex, lastRatio);
         }
+        float keepRatio = sameChapter ? currentRatio() : 0f;
         lastIndex = index;
-        lastRatio = 0f;
+        lastRatio = keepRatio;
         autoNextFired = false;
         // 正文还没排版，先锁住自动越章（见 chapterScrollReady 的注释）
         chapterScrollReady = false;
 
-        setChapterText(text);
+        setChapterText(text, keepRatio);
         // 两层 invokeLater：第一层等 setText 触发的排版跑完，第二层保证
-        // scrollToStart 已经把滚动条真正拉回章首，再放开自动越章。
+        // 定位已经生效，再放开自动越章。
         SwingUtilities.invokeLater(() -> SwingUtilities.invokeLater(() -> {
-            scrollToStart();
+            scrollToRatio(keepRatio);
             chapterScrollReady = true;
         }));
         chapterList.selectChapter(index);
@@ -836,6 +849,9 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
             sourceDisguisePanel.rebuild();
         }
 
+        if (sameChapter) {
+            return; // 同章刷新已按比例恢复，不要再套用「接着上次读」的位置
+        }
         // 只有「接着上次读」才是有位置的；正常翻下一章时这里拿到 0，会停在开头
         float saved = NovelReaderService.getInstance().savedChapterRatio();
         if (saved > 0.001f) {

@@ -105,6 +105,9 @@ public final class StatusBarChunkWidgetFactory implements StatusBarWidgetFactory
         /** 章正文是否已到达。bookChanged 只带书不带正文，正文要等 chapterChanged */
         private boolean contentReady;
 
+        /** 上一次 chapterChanged 的章号，用来识别「同一章的内容刷新」 */
+        private int lastIndex = -1;
+
         ChunkWidget(Project project) {
             this.project = project;
             label.setHorizontalAlignment(SwingConstants.LEFT);
@@ -179,8 +182,15 @@ public final class StatusBarChunkWidgetFactory implements StatusBarWidgetFactory
         public void chapterChanged(int index, String text) {
             boolean jumpToEnd = jumpToEndPending;
             jumpToEndPending = false;
+            // 同章内容刷新（网络章节加载完成）保住当前段，别把读者打回第一段
+            boolean sameChapter = lastIndex == index;
+            int keepChunk = sameChapter ? cursor.index() : -1;
+            lastIndex = index;
             contentReady = text != null && !text.isBlank();
             cursor.setChapter(text == null ? "" : text, jumpToEnd);
+            if (keepChunk >= 0 && !jumpToEnd) {
+                cursor.setIndex(keepChunk);
+            }
             refreshLabel();
         }
 
@@ -188,6 +198,7 @@ public final class StatusBarChunkWidgetFactory implements StatusBarWidgetFactory
         public void bookChanged(Book book) {
             jumpToEndPending = false;
             contentReady = false;
+            lastIndex = -1;
             refreshLabel();
         }
 

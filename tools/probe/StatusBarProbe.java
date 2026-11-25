@@ -49,16 +49,18 @@ public final class StatusBarProbe {
         ChunkCursor cursor = new ChunkCursor();
         cursor.setChapter(BODY, false);
         int total = cursor.size();
-        want(total == 3, "样例切出 3 段（实际 %d）".formatted(total));
+        // 段数取决于 ChapterChunks.MAX_CHARS（当前 30 字/段），不写死期望值，
+        // 否则调整分段参数时探针会假失败
+        want(total >= 3, "样例切出多段（实际 %d）".formatted(total));
         want(cursor.index() == 0, "初始在第 1 段");
 
-        want(cursor.display().endsWith("(1/3)"), "进度尾巴格式（%s）"
+        want(cursor.display().endsWith("(1/" + total + ")"), "进度尾巴格式（%s）"
                 .formatted(cursor.display().substring(Math.max(0, cursor.display().length() - 8))));
 
         // 逐段往后：中途回 true，最后一段再往后回 false
-        want(cursor.next(), "中段往后返回 true");
-        want(cursor.index() == 1, "翻到第 2 段");
-        want(cursor.next(), "末段往前一步仍返回 true");
+        while (!cursor.atLast()) {
+            want(cursor.next(), "中段往后返回 true");
+        }
         want(cursor.atLast(), "现在在最后一段");
         want(!cursor.next(), "最后一段再往后返回 false（越章信号）");
 

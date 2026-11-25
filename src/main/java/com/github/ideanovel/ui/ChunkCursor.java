@@ -22,6 +22,14 @@ public final class ChunkCursor {
         index = jumpToEnd ? Math.max(0, chunks.size() - 1) : 0;
     }
 
+    /**
+     * 直接定位到指定段（越界自动收敛）。用于「同一章内容刷新」时保住阅读位置：
+     * 网络章节异步加载完成会再触发一次 chapterChanged，不这么做会把读者打回第一段。
+     */
+    public void setIndex(int target) {
+        index = Math.max(0, Math.min(target, chunks.size() - 1));
+    }
+
     /** 往后翻一段。已在最后一段时返回 false（由调用方决定是否越章） */
     public boolean next() {
         if (index < chunks.size() - 1) {
