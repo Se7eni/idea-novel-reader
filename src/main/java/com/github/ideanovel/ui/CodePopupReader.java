@@ -209,6 +209,11 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
                 .setCancelOnClickOutside(false)
                 .setCancelKeyEnabled(true)
                 .setCancelCallback(() -> {
+                    // 失焦 / 点外部 / 被系统取消都会走到这里（不只是显式 close）。
+                    // 必须先记下读到哪，否则下次打开只能恢复到更早保存的位置，
+                    // 表现就是「切出去再回来，跳回章节开头」。
+                    savePosition();
+                    content.stopAuto();
                     detach();
                     return true;
                 })
