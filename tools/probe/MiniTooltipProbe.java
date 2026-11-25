@@ -40,6 +40,7 @@ public final class MiniTooltipProbe {
         checkWheel();
         checkAutoAdvance();
         checkNoRunawayChapters();
+        checkFocusPause();
         checkColors();
         saveShots();
 
@@ -330,6 +331,44 @@ public final class MiniTooltipProbe {
         // 0 或负数视为不启动
         content.setAutoAdvance(0);
         want(!content.isAutoAdvancing(), "非法间隔视为停止");
+    }
+
+    // ---------------- 失焦暂停（1.0.26 回归） ----------------
+
+    /**
+     * 回归用例：弹窗失焦要暂停自动翻段，重新聚焦要接着跑。
+     * 之前的 bug 是失焦后定时器还在跑，人已经不在看，它却一路翻到下一章。
+     */
+    private static void checkFocusPause() throws Exception {
+        section("失焦暂停：切出去不再自动翻段");
+
+        RecordingNav nav = new RecordingNav();
+        MiniTooltipContent content = new MiniTooltipContent();
+        content.setNav(nav);
+        content.setChapter(BODY, 0, false);
+        content.setAutoAdvance(1);
+        want(content.isAutoAdvancing(), "自动已开启");
+
+        content.pauseAutoOnFocusLost();
+        want(!content.isAutoAdvancing(), "失焦后暂停");
+        int pausedAt = content.chunkIndex();
+
+        Thread.sleep(1300);
+        flushEdt();
+        want(content.chunkIndex() == pausedAt,
+                "暂停期间不再翻段（停在 %d）".formatted(pausedAt + 1));
+
+        content.resumeAutoOnFocusGained();
+        want(content.isAutoAdvancing(), "重新聚焦恢复自动");
+        Thread.sleep(1400);
+        flushEdt();
+        want(content.chunkIndex() > pausedAt, "恢复后继续翻段（%d → %d）"
+                .formatted(pausedAt + 1, content.chunkIndex() + 1));
+
+        content.stopAuto();
+        want(!content.isAutoAdvancing(), "手动停止后不再翻段");
+        content.resumeAutoOnFocusGained();
+        want(!content.isAutoAdvancing(), "手动停掉之后聚焦也不该自己开（尊重用户意图）");
     }
 
     private static void flushEdt() throws Exception {

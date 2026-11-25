@@ -115,8 +115,14 @@ public class MiniTooltipContent extends JPanel {
     /** 宿主在 chapterChanged 前指定的「从第几段开始」（记忆位置恢复用），-1 表示从头/末尾 */
     private int pendingChunk = -1;
 
-    /** 定时自动翻段的计时器；null 表示手动模式 */
+    /** 定时自动翻段的计时器；null 表示手动模式（或已因失焦暂停） */
     private javax.swing.Timer autoTimer;
+
+    /** 当前自动翻段的间隔秒数。0 表示用户主动关掉了自动 */
+    private int autoSeconds;
+
+    /** 是不是因为弹窗失焦才停的。只有这种情况才在重新聚焦时自动恢复 */
+    private boolean autoPausedByFocus;
 
     /** 当前显示的是「加载中 / 无书」占位内容，不是正文。此时不能把「没有下一段」当成章尾去越章 */
     private boolean loading;
@@ -360,6 +366,7 @@ public class MiniTooltipContent extends JPanel {
             updateHeader();
             return;
         }
+        autoSeconds = seconds;
         autoTimer = new javax.swing.Timer(seconds * 1000, e -> perform(ChunkAction.NEXT_CHUNK));
         autoTimer.start();
         updateHeader();
@@ -367,9 +374,37 @@ public class MiniTooltipContent extends JPanel {
 
     /** 停止自动翻段。关窗、切手动模式都必须调，否则计时器会把弹窗的内容一直往后推 */
     public void stopAuto() {
+        autoSeconds = 0;
+        autoPausedByFocus = false;
         if (autoTimer != null) {
             autoTimer.stop();
             autoTimer = null;
+            updateHeader();
+        }
+    }
+
+    /**
+     * 弹窗失焦（点代码、切窗口）时暂停自动翻段。
+     *
+     * <p>不这么做的话，人已经不在看弹窗了，定时器还在后面一直翻，
+     * 到章尾就自己跳下一章——看起来就是「切出去了章节还在自动跳」。
+     * 间隔记在 {@link #autoSeconds} 里，重新聚焦时能接着跑。
+     */
+    public void pauseAutoOnFocusLost() {
+        if (autoTimer != null) {
+            autoTimer.stop();
+            autoTimer = null;
+            autoPausedByFocus = true;
+            updateHeader();
+        }
+    }
+
+    /** 弹窗重新获得焦点：如果刚才是被失焦暂停的，恢复自动翻段 */
+    public void resumeAutoOnFocusGained() {
+        if (autoPausedByFocus && autoSeconds > 0) {
+            autoPausedByFocus = false;
+            autoTimer = new javax.swing.Timer(autoSeconds * 1000, e -> perform(ChunkAction.NEXT_CHUNK));
+            autoTimer.start();
             updateHeader();
         }
     }
