@@ -19,11 +19,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup JDK 25
+      # 两个 JDK 各司其职：
+      # - 25 作为编译 toolchain（IDEA 2026.2 的 class 是 JDK 25 编译的，21 读不了）
+      # - 21 作为 Gradle 运行环境（Gradle 8.14 不支持 JDK 25，会报 major version 69）
+      - name: Setup JDK 25 (compile toolchain)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 25
+
+      - name: Setup JDK 21 (Gradle runtime)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -36,4 +45,7 @@ jobs:
           CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
-        run: gradle publishPlugin
+        run: |
+          echo "JDK25=$JAVA_HOME_25_X64"
+          echo "JDK21=$JAVA_HOME_21_X64"
+          gradle publishPlugin -Dorg.gradle.java.installations.paths="$JAVA_HOME_25_X64,$JAVA_HOME_21_X64"
