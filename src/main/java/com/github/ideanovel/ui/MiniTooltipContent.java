@@ -148,7 +148,8 @@ public class MiniTooltipContent extends JPanel {
         // 自己要能拿焦点，按键才落到 WHEN_IN_FOCUSED_WINDOW 绑定上
         setFocusable(true);
         setFocusTraversalKeysEnabled(false);
-        setBorder(BorderFactory.createEmptyBorder(0, 11, 9, 11));
+        // 上下边距压到 3px：弹窗只有一行字，再多留白就显空
+        setBorder(BorderFactory.createEmptyBorder(3, 11, 3, 11));
         installKeyBindings();
         applyFont();
         applyThemeColors();
@@ -340,11 +341,13 @@ public class MiniTooltipContent extends JPanel {
     private void layoutForWidth() {
         textPane.setSize(MAX_WIDTH, Integer.MAX_VALUE);
         int lineWidth = textPane.getPreferredSize().width;
-        int lineHeight = textPane.getPreferredSize().height;
-        // 标题栏已经不再渲染，高度不再计入
-        int headerHeight = 0;
+        // 单行高度必须用字体度量算。
+        // JTextPane.getPreferredSize().height 会把文档尾部那个隐式段落结束符也算进去，
+        // 一行文字量出来接近两行高——弹窗底部那条空白就是这么来的。
+        int lineHeight = textPane.getFontMetrics(textPane.getFont()).getHeight();
         int width = Math.min(MAX_WIDTH, lineWidth + 24);
-        Dimension size = new Dimension(width, Math.max(36, lineHeight + headerHeight + 12));
+        // 上下各留 6px 的内边距就够了，弹窗贴着文字看起来才像 IDE 的原生提示
+        Dimension size = new Dimension(width, lineHeight + 12);
         setPreferredSize(size);
         revalidate();
         repaint();
