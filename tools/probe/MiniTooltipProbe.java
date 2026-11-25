@@ -39,6 +39,7 @@ public final class MiniTooltipProbe {
         checkNavigation();
         checkWheel();
         checkAutoAdvance();
+        checkNoRunawayChapters();
         checkColors();
         saveShots();
 
@@ -47,6 +48,54 @@ public final class MiniTooltipProbe {
         if (failed > 0) {
             System.exit(1);
         }
+    }
+
+    // ---------------- 防连续跳章（1.0.22 回归） ----------------
+
+    /**
+     * 回归用例：章节加载中 / 空章节时，翻段不能把「没有下一段」当成章尾去越章。
+     * 之前的 bug 是自动翻段开着时，网络章节加载中被一路跳过去。
+     */
+    private static void checkNoRunawayChapters() {
+        section("防连续跳章：占位/空章节不越章");
+
+        // 1. 加载中（setPlaceholder 只放一条文案）连翻 10 次，不应越章
+        RecordingNav nav = new RecordingNav();
+        MiniTooltipContent content = new MiniTooltipContent();
+        content.setNav(nav);
+        content.setPlaceholder("正在加载…");
+        for (int i = 0; i < 10; i++) {
+            content.perform(MiniTooltipContent.ChunkAction.NEXT_CHUNK);
+        }
+        want(nav.nextChapter.get() == 0,
+                "加载中连翻 10 次不越章（实际 %d 次）".formatted(nav.nextChapter.get()));
+
+        // 2. 空章节（切出来只有一段空串）同样不越章
+        content.setChapter("", 0, false);
+        for (int i = 0; i < 10; i++) {
+            content.perform(MiniTooltipContent.ChunkAction.NEXT_CHUNK);
+        }
+        want(nav.nextChapter.get() == 0,
+                "空章节连翻 10 次不越章（实际 %d 次）".formatted(nav.nextChapter.get()));
+
+        // 3. 加载完成后恢复正常翻段
+        content.setChapter(BODY, 1, false);
+        content.perform(MiniTooltipContent.ChunkAction.NEXT_CHUNK);
+        want(content.chunkIndex() == 1, "加载完成恢复正常翻段");
+        want(content.chunkCount() >= 3, "正常章节仍有多段（%d）".formatted(content.chunkCount()));
+
+        // 4. 自动模式下，极短章节（1 段非空）的越章要限速：连续翻 5 次最多越章 1 次
+        RecordingNav shortNav = new RecordingNav();
+        MiniTooltipContent shortChapter = new MiniTooltipContent();
+        shortChapter.setNav(shortNav);
+        shortChapter.setChapter("很短。", 0, false);
+        shortChapter.setAutoAdvance(1);
+        for (int i = 0; i < 5; i++) {
+            shortChapter.perform(MiniTooltipContent.ChunkAction.NEXT_CHUNK);
+        }
+        want(shortNav.nextChapter.get() <= 1,
+                "自动模式下极短章节 5 次翻段最多越章 1 次（实际 %d 次）".formatted(shortNav.nextChapter.get()));
+        shortChapter.stopAuto();
     }
 
     // ---------------- 分段逻辑 ----------------

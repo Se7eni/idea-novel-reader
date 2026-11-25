@@ -118,6 +118,12 @@ public class MiniTooltipContent extends JPanel {
     /** 定时自动翻段的计时器；null 表示手动模式 */
     private javax.swing.Timer autoTimer;
 
+    /** 当前显示的是「加载中 / 无书」占位内容，不是正文。此时不能把「没有下一段」当成章尾去越章 */
+    private boolean loading;
+
+    /** 上次越章的时间戳。自动翻段到章尾会越章，加载慢或章节极短时没有这道闸会连续跳章 */
+    private long lastChapterJumpAt;
+
     /** 尺寸变化时回调宿主，让 JBPopup 重新 pack。宿主 set 进来，内容不需要知道 JBPopup 长啥样 */
     private java.util.function.Consumer<Dimension> resizeListener;
 
@@ -153,6 +159,7 @@ public class MiniTooltipContent extends JPanel {
     public void setChapter(String body, int chapterIndexOf, boolean jumpToEnd) {
         this.chapterIndex = Math.max(0, chapterIndexOf);
         chunks = ChapterChunks.split(body);
+        loading = false;
         if (pendingChunk >= 0 && pendingChunk < chunks.size()) {
             chunkIndex = pendingChunk;
         } else {
@@ -173,33 +180,57 @@ public class MiniTooltipContent extends JPanel {
         updateHeader();
     }
 
-    /** 没书可读时的占位文案 */
+    /** 没书可读 / 章节加载中时的占位文案 */
     public void setPlaceholder(String message) {
         chunks = new ArrayList<>();
         chunks.add(message == null ? "" : message);
         chunkIndex = 0;
         chapterIndex = 0;
+        loading = true;
         render();
     }
 
     public void nextChunk() {
+        // 占位内容（加载中 / 无书）不是正文，不能把「没有下一段」当成章尾去越章。
+        // 否则网络章节加载慢时，自动翻段的定时器会一格格把整本书跳过去。
+        if (loading || chunks.isEmpty()) {
+            return;
+        }
+        // 空章节（切出来只有一段空串）同样是「没内容」，别当成章尾
+        if (chunks.size() == 1 && chunks.get(0).isEmpty()) {
+            return;
+        }
         if (chunkIndex < chunks.size() - 1) {
             chunkIndex++;
             render();
-        } else {
-            // 章尾往后 → 下一章第一段（chapterChanged 回来后 setChapter 从 0 开始，正好）
-            nav.nextChapter();
+            return;
         }
+        // 章尾越章：自动翻段时限速。章节可能极短或内容异常，没有这道闸会连续跳章；
+        // 手动翻（方向键/滚轮）要即时响应，不受限速影响
+        long now = System.currentTimeMillis();
+        if (isAutoAdvancing() && now - lastChapterJumpAt < 3000) {
+            return;
+        }
+        lastChapterJumpAt = now;
+        // 章尾往后 → 下一章第一段（chapterChanged 回来后 setChapter 从 0 开始，正好）
+        nav.nextChapter();
     }
 
     public void prevChunk() {
+        // 占位内容不是正文，别拿它当章首去往前越章（同 nextChunk 的保护）
+        if (loading || chunks.isEmpty()) {
+            return;
+        }
+        if (chunks.size() == 1 && chunks.get(0).isEmpty()) {
+            return;
+        }
         if (chunkIndex > 0) {
             chunkIndex--;
             render();
-        } else {
-            // 章首往前 → 上一章最后一段，由宿主在 chapterChanged 时传 jumpToEnd=true
-            nav.prevChapter();
+            return;
         }
+        // 章首往前 → 上一章最后一段，由宿主在 chapterChanged 时传 jumpToEnd=true
+        nav.prevChapter();
     }
 
     /** 当前显示的正文（不含进度数字），探针用 */

@@ -17,6 +17,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 # 结果是「找不到平台类」这种离奇报错。统一换成反斜杠。
 IDEA = os.path.normpath(sys.argv[1] if len(sys.argv) > 1
                         else r"D:\Software\IntelliJ IDEA 2026.2.0.1")
+# 第二个参数可指定探针类名（默认 UiProbe）：MiniTooltipProbe / StatusBarProbe ...
+PROBE = sys.argv[2] if len(sys.argv) > 2 else "UiProbe"
 
 classes = os.path.join(ROOT, "build", "classes")
 probe_out = os.path.join(ROOT, "tools", "probe", "out")
@@ -33,7 +35,7 @@ vm_args = [
     "--add-opens", "java.desktop/sun.awt=ALL-UNNAMED",
 ]
 
-cmd = [java] + vm_args + ["-cp", cp, "UiProbe"]
+cmd = [java] + vm_args + ["-cp", cp, PROBE]
 env = dict(os.environ)
 env.pop("JAVA_TOOL_OPTIONS", None)
 p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,

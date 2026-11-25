@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.github.ideanovel.reader</id>
     <name>Se7eni Novel Reader</name>
-    <version>1.0.21</version>
+    <version>1.0.22</version>
     <vendor email="Se7eni@users.noreply.github.com" url="https://github.com/Se7eni/idea-novel-reader">ideanovel</vendor>
 
     <description><![CDATA[
@@ -23,6 +23,7 @@
 
     <change-notes><![CDATA[
     <ul>
+        <li>1.0.22 修复：代码弹出框在章节加载中/空章节时会连续跳章（占位内容被误判成章尾，自动翻段把整本书一路跳过去）。现在加载中与空章节不翻段，自动翻段越章加 3 秒限速，手动翻章不受影响</li>
         <li>1.0.21 代码弹出框快捷键改为 <b>Alt+Shift+N</b>（三键、默认 keymap 空闲、不是菜单助记符），原 Ctrl+Alt+Shift+R 保留为备选。同时修复「编辑器里按了没反应」：不再用 setEnabledAndVisible 隐藏 action，并把入口加进编辑器右键菜单，任何焦点下都能触发</li>
         <li>1.0.20 Marketplace 命名修正：改为唯一的「Se7eni Novel Reader」（Novel Reader 与 moyu 系列均已被占用）</li>
         <li>1.0.19 Marketplace 命名修正：插件名去掉商标词「IDEA」（Marketplace 不允许插件名包含 IDEA/IntelliJ 等受保护词）</li>
