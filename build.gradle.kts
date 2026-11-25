@@ -75,7 +75,8 @@ tasks {
     named("publishPlugin") {
         dependsOn("signPlugin")
         doFirst {
-            val missing = listOf("CERTIFICATE_CHAIN", "PRIVATE_KEY", "PRIVATE_KEY_PASSWORD")
+            // 私钥可以不加密，所以 PRIVATE_KEY_PASSWORD 不强制要求
+            val missing = listOf("CERTIFICATE_CHAIN", "PRIVATE_KEY")
                 .filter { System.getenv(it).isNullOrBlank() }
             if (missing.isNotEmpty()) {
                 throw GradleException("缺少签名凭证环境变量：${missing.joinToString()}，见 docs/PUBLISH.md")
