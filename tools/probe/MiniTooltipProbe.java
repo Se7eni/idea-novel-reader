@@ -84,7 +84,8 @@ public final class MiniTooltipProbe {
         want(content.chunkIndex() == 1, "加载完成恢复正常翻段");
         want(content.chunkCount() >= 3, "正常章节仍有多段（%d）".formatted(content.chunkCount()));
 
-        // 4. 自动模式下，极短章节（1 段非空）的越章要限速：连续翻 5 次最多越章 1 次
+        // 4. 自动模式下，极短章节（1 段非空）不越章：
+        //    这种章节一进来就在章尾，自动模式会一章接一章跳过去
         RecordingNav shortNav = new RecordingNav();
         MiniTooltipContent shortChapter = new MiniTooltipContent();
         shortChapter.setNav(shortNav);
@@ -93,9 +94,18 @@ public final class MiniTooltipProbe {
         for (int i = 0; i < 5; i++) {
             shortChapter.perform(MiniTooltipContent.ChunkAction.NEXT_CHUNK);
         }
-        want(shortNav.nextChapter.get() <= 1,
-                "自动模式下极短章节 5 次翻段最多越章 1 次（实际 %d 次）".formatted(shortNav.nextChapter.get()));
+        want(shortNav.nextChapter.get() == 0,
+                "自动模式下极短章节不越章（实际 %d 次）".formatted(shortNav.nextChapter.get()));
         shortChapter.stopAuto();
+
+        // 5. 同一章节改为手动模式后，仍然允许越章（不能因为自动模式的保护把手动也堵死）
+        RecordingNav manualNav = new RecordingNav();
+        MiniTooltipContent manual = new MiniTooltipContent();
+        manual.setNav(manualNav);
+        manual.setChapter("很短。", 0, false);
+        manual.perform(MiniTooltipContent.ChunkAction.NEXT_CHUNK);
+        want(manualNav.nextChapter.get() == 1,
+                "手动模式极短章节仍可越章（实际 %d 次）".formatted(manualNav.nextChapter.get()));
     }
 
     // ---------------- 分段逻辑 ----------------

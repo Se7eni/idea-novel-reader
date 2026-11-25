@@ -200,6 +200,12 @@ public class MiniTooltipContent extends JPanel {
         if (chunks.size() == 1 && chunks.get(0).isEmpty()) {
             return;
         }
+        // 自动翻段遇到「只有一段」的章节（极短章、加载失败的提示语）不越章：
+        // 这种章节一进来就处在章尾，自动模式会一章接一章地跳过去。
+        // 手动翻（方向键/滚轮）仍然允许越章，用户自己能判断。
+        if (isAutoAdvancing() && chunks.size() <= 1) {
+            return;
+        }
         if (chunkIndex < chunks.size() - 1) {
             chunkIndex++;
             render();

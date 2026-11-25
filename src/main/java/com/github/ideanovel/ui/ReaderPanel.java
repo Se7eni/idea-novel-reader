@@ -91,6 +91,19 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
     private Timer tipTimer;
     private boolean disguised;
     private boolean autoNextFired;
+
+    /**
+     * 新章正文是否已经排完版。
+     *
+     * <p>切章时 {@code setText} 之后布局是异步的，滚动条在这一小段时间里还停在
+     * 上一章的底部（max 也是旧章节的值）。如果此时 {@code scrollTick} 恰好跑了一拍，
+     * 就会把「还没排版」误判成「已经读完」，于是立刻又翻一章——这是自动滚动连续
+     * 跳章的直接原因。排版完成前一律不允许自动越章。
+     */
+    private boolean chapterScrollReady = true;
+
+    /** 上次自动越章的时间戳，给自动滚动限速，防止任何形式的连续跳章 */
+    private long lastAutoChapterAt;
     /** 上一次布局时的面板宽度，用来判断需不需要重排工具栏 */
     private int lastWidth;
 
@@ -634,9 +647,20 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         if (disguised && isSourceDisguise()) {
             return;
         }
+        // 新章还没排完版：滚动条位置和 max 都还是上一章的，这时候判「到底」必然误判
+        if (!chapterScrollReady) {
+            return;
+        }
         JScrollBar bar = scrollPane.getVerticalScrollBar();
         int max = bar.getMaximum() - bar.getVisibleAmount();
         if (max <= 0) {
+            return;
+        }
+        // 整章正文还不够一屏（或 viewport 还没算好）：本来就没有可滚的，更不该越章。
+        // 判据用 viewport 的真实高度，比只看 scrollbar 的 max 稳。
+        java.awt.Dimension viewSize = scrollPane.getViewport().getViewSize();
+        int extent = scrollPane.getViewport().getExtentSize().height;
+        if (extent > 0 && viewSize.height <= extent + 8) {
             return;
         }
         NovelSettingsState s = NovelSettingsState.getInstance();
@@ -649,6 +673,14 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         if (next >= max) {
             bar.setValue(max);
             if (!autoNextFired) {
+                // 越章限速：任何情况下 3 秒内只允许自动越一章。
+                // 章节极短、网络加载失败、布局抖动都可能让「到底」反复成立，
+                // 没有这道闸就会一路跳到书末。
+                long now = System.currentTimeMillis();
+                if (now - lastAutoChapterAt < 3000) {
+                    return;
+                }
+                lastAutoChapterAt = now;
                 autoNextFired = true;
                 flushProgress();
                 NovelReaderService.getInstance().nextChapter();
@@ -787,8 +819,16 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         lastIndex = index;
         lastRatio = 0f;
         autoNextFired = false;
+        // 正文还没排版，先锁住自动越章（见 chapterScrollReady 的注释）
+        chapterScrollReady = false;
 
         setChapterText(text);
+        // 两层 invokeLater：第一层等 setText 触发的排版跑完，第二层保证
+        // scrollToStart 已经把滚动条真正拉回章首，再放开自动越章。
+        SwingUtilities.invokeLater(() -> SwingUtilities.invokeLater(() -> {
+            scrollToStart();
+            chapterScrollReady = true;
+        }));
         chapterList.selectChapter(index);
         updateStatus();
         // 源码伪装态下翻了章，注释块内容得跟着换
