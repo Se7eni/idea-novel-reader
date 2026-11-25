@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.github.ideanovel.reader</id>
     <name>Se7eni Novel Reader</name>
-    <version>1.0.20</version>
+    <version>1.0.21</version>
     <vendor email="Se7eni@users.noreply.github.com" url="https://github.com/Se7eni/idea-novel-reader">ideanovel</vendor>
 
     <description><![CDATA[
@@ -23,6 +23,7 @@
 
     <change-notes><![CDATA[
     <ul>
+        <li>1.0.21 代码弹出框快捷键改为 <b>Alt+Shift+N</b>（三键、默认 keymap 空闲、不是菜单助记符），原 Ctrl+Alt+Shift+R 保留为备选。同时修复「编辑器里按了没反应」：不再用 setEnabledAndVisible 隐藏 action，并把入口加进编辑器右键菜单，任何焦点下都能触发</li>
         <li>1.0.20 Marketplace 命名修正：改为唯一的「Se7eni Novel Reader」（Novel Reader 与 moyu 系列均已被占用）</li>
         <li>1.0.19 Marketplace 命名修正：插件名去掉商标词「IDEA」（Marketplace 不允许插件名包含 IDEA/IntelliJ 等受保护词）</li>
         <li>1.0.18 上架 Marketplace 合规修正：插件名改为纯 ASCII（Marketplace 不允许插件名含中文等非 ASCII 字符）；description 以拉丁字符段落开头并满足最小长度；vendor 邮箱与主页改为真实地址</li>
@@ -106,9 +107,13 @@
         <action id="IdeaNovel.CodePopup"
                 class="com.github.ideanovel.action.CodePopupAction"
                 text="代码弹出框阅读"
-                description="弹输入框设置自动换句秒数后，光标旁浮出一句一行的小窗自动换句，按 Esc 或再按一次关闭">
+                description="弹输入框设置自动换句秒数后，光标旁浮出一句一行的小窗自动换句，按 Esc 或再按一次关闭（默认 Alt+Shift+N）">
+            <!-- 主快捷键：Alt+Shift+N（三键、默认 keymap 空闲、不是菜单助记符）。
+                 编辑器里 Ctrl+Alt+Shift+R 常被 AI 类插件占用，所以降为备选。 -->
+            <keyboard-shortcut keymap="$default" first-keystroke="alt shift N"/>
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift R"/>
             <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
         </action>
 
         <action id="IdeaNovel.NextChunk"
