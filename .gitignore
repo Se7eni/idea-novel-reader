@@ -4,3 +4,13 @@ out/
 .idea/
 *.iml
 *.class
+
+# 插件发布：token 与签名私钥绝不入库
+local.properties
+*.pem
+*.p12
+*.jks
+*.keystore
+certificateChain.crt
+privateKey.pem
+private-key.pem

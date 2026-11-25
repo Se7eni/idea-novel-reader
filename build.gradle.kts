@@ -47,9 +47,39 @@ intellijPlatform {
     // 关闭可搜索选项索引，显著加快构建速度
     buildSearchableOptions = false
 
+    // 插件签名：上架 Marketplace 必须签名。三个值都从环境变量读，
+    // 本地 buildPlugin 不签名也能跑；发布（publishPlugin）时 CI 通过 Secret 注入。
+    // 证书生成方式见 docs/PUBLISH.md
+    signing {
+        certificateChain = providers.environmentVariable("CERTIFICATE_CHAIN")
+        privateKey = providers.environmentVariable("PRIVATE_KEY")
+        password = providers.environmentVariable("PRIVATE_KEY_PASSWORD")
+    }
+
+    // 发布到 JetBrains Marketplace。token 默认读 PUBLISH_TOKEN 环境变量，
+    // GitHub Actions 里通过 Secret 注入，绝不明文写进仓库。
+    publishing {
+        token = providers.environmentVariable("PUBLISH_TOKEN")
+        channels = listOf("default")
+    }
+
     pluginVerification {
         ides {
             recommended()
+        }
+    }
+}
+
+// 发布前强制检查签名凭证，避免「没配签名却跑 publishPlugin」被静默跳过
+tasks {
+    named("publishPlugin") {
+        dependsOn("signPlugin")
+        doFirst {
+            val missing = listOf("CERTIFICATE_CHAIN", "PRIVATE_KEY", "PRIVATE_KEY_PASSWORD")
+                .filter { System.getenv(it).isNullOrBlank() }
+            if (missing.isNotEmpty()) {
+                throw GradleException("缺少签名凭证环境变量：${missing.joinToString()}，见 docs/PUBLISH.md")
+            }
         }
     }
 }
