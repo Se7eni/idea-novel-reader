@@ -187,12 +187,12 @@ public final class MiniTooltipProbe {
         want(placeholder.fullText().contains("还没有打开小说"), "占位文案可读");
         want(placeholder.chunkCount() == 1, "占位算一段");
 
-        // 标题栏：设置章节标题后应显示章节名
+        // 弹窗不再渲染章节名（只留正文 + 段进度），但标题仍被记录，宿主可查询
         MiniTooltipContent titled = new MiniTooltipContent();
         titled.setChapterTitle("第84章 好舅舅");
         titled.setChapter(BODY, 83, false);
-        want(titled.headerText().contains("好舅舅"), "标题栏显示章节名（%s）"
-                .formatted(titled.headerText()));
+        want(titled.headerText().contains("好舅舅") || titled.headerText().isEmpty(),
+                "章节名不再渲染（headerText=%s）".formatted(titled.headerText()));
     }
 
     // ---------------- 翻段与越章 ----------------

@@ -129,11 +129,9 @@ public class MiniTooltipContent extends JPanel {
 
     public MiniTooltipContent() {
         setLayout(new java.awt.BorderLayout());
-        // 顶部标题栏：章节名 + 自动翻段状态，让弹窗一眼知道在读哪、是不是自动在走
-        headerLabel.setOpaque(false);
-        headerLabel.setBorder(BorderFactory.createEmptyBorder(3, 11, 1, 11));
-        headerLabel.setFont(headerLabel.getFont().deriveFont(10f));
-        add(headerLabel, java.awt.BorderLayout.NORTH);
+        // 弹窗不显示章节名：只保留正文 + 段进度，越小越不碍事。
+        // chapterTitle 仍然记录（宿主和探针可查），只是不参与渲染。
+        headerLabel.setVisible(false);
 
         textPane.setEditable(false);
         textPane.setFocusable(false);
@@ -337,7 +335,8 @@ public class MiniTooltipContent extends JPanel {
         textPane.setSize(MAX_WIDTH, Integer.MAX_VALUE);
         int lineWidth = textPane.getPreferredSize().width;
         int lineHeight = textPane.getPreferredSize().height;
-        int headerHeight = headerLabel.getPreferredSize().height;
+        // 标题栏已经不再渲染，高度不再计入
+        int headerHeight = 0;
         int width = Math.min(MAX_WIDTH, lineWidth + 24);
         Dimension size = new Dimension(width, Math.max(36, lineHeight + headerHeight + 12));
         setPreferredSize(size);
