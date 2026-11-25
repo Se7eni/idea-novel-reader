@@ -646,9 +646,10 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
     }
 
     private void scrollTick(int speed) {
-        // 源码伪装态下正文是不可见的，让它继续滚会一路滚到底然后自动翻章，
-        // 表现成"假界面自己在翻页"。这里直接不滚。
-        if (disguised && isSourceDisguise()) {
+        // 伪装态下正文一律不可见，继续滚会一路滚到底然后自动翻章，
+        // 表现成「假界面自己在翻页」。四种伪装模式一视同仁，都不滚
+        // （以前只判断了源码伪装，Maven/Java/终端三种仍会滚到底跳章）。
+        if (disguised) {
             return;
         }
         // 新章还没排完版：滚动条位置和 max 都还是上一章的，这时候判「到底」必然误判
@@ -948,7 +949,11 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
 
     @Override
     public void dispose() {
-        NovelReaderService.getInstance().removeListener(this);
+        try {
+            NovelReaderService.getInstance().removeListener(this);
+        } catch (Exception ignored) {
+            // 项目关闭阶段服务可能已经销毁，拿不到就算了，不影响后面的收尾
+        }
         if (autoScrollTimer != null) {
             autoScrollTimer.stop();
             autoScrollTimer = null;

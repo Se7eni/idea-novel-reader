@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.github.ideanovel.reader</id>
     <name>Se7eni Novel Reader</name>
-    <version>1.0.26</version>
+    <version>1.0.27</version>
     <vendor email="Se7eni@users.noreply.github.com" url="https://github.com/Se7eni/idea-novel-reader">ideanovel</vendor>
 
     <description><![CDATA[
@@ -23,6 +23,7 @@
 
     <change-notes><![CDATA[
     <ul>
+        <li>1.0.27 排查修复：老板键的另外三种伪装（Maven 构建日志 / Java 源码 / 终端输出）下自动滚动没有停，正文不可见却会一路滚到底自动跳章；目录搜索或清空搜索后，当前章节的选中高亮不再丢失；项目关闭时面板收尾更稳（服务已销毁不会中断清理）</li>
         <li>1.0.26 修复：代码弹窗失焦（点代码、切窗口）后自动翻段的定时器没停，人已经不在看它却还在往后翻、到章尾自己跳章。现在失焦即暂停，重新点回弹窗自动接着跑</li>
         <li>1.0.25 修复：代码弹窗因失焦/点外部被系统关闭时没有保存阅读位置，重新打开会跳回本章开头。现在任何关闭方式（Esc、再按快捷键、失焦、点外部）都会记住当前读到第几句</li>
         <li>1.0.24 代码弹窗去掉顶部章节名，只保留正文和段进度，弹窗更矮、更不挡代码（当前章节名在侧边栏和状态栏仍能看到）</li>

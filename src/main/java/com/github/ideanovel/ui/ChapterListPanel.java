@@ -132,6 +132,9 @@ public class ChapterListPanel extends JPanel {
 
     private void refilter() {
         String keyword = searchField.getText() == null ? "" : searchField.getText().trim().toLowerCase();
+        // 记住当前选中的章节：搜索/清空搜索时列表会整体重建，
+        // 不恢复的话「当前读到哪一章」的高亮就没了
+        Chapter selected = list.getSelectedValue();
         visibleChapters = new ArrayList<>();
         for (Chapter c : allChapters) {
             if (keyword.isEmpty() || c.getTitle().toLowerCase().contains(keyword)) {
@@ -145,6 +148,12 @@ public class ChapterListPanel extends JPanel {
         model.clear();
         if (!visibleChapters.isEmpty()) {
             model.addAll(visibleChapters);
+        }
+        if (selected != null) {
+            int idx = visibleChapters.indexOf(selected);
+            if (idx >= 0) {
+                list.setSelectedIndex(idx);
+            }
         }
 
         if (model.isEmpty()) {
