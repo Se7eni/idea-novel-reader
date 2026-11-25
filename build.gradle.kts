@@ -7,9 +7,10 @@ group = "com.github.ideanovel"
 version = providers.gradleProperty("pluginVersion").get()
 
 java {
-    // IDEA 2026.2 运行在 JBR 25 上，这里用 21 编译以保证字节码兼容性
+    // IDEA 2026.2 运行在 JBR 25 上，平台 SDK 的 class 文件也是 JDK 25 编译的。
+    // 用 21 编译会报 "bad class file"（javac 读不了更高版本的字节码），所以这里必须用 25。
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
