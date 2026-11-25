@@ -1,6 +1,12 @@
-# 摸鱼小说阅读器（IDEA 插件）
+# Se7eni Novel Reader
 
-在 IntelliJ IDEA 侧边栏里看小说，支持本地 txt 与网络小说，带章节目录、进度记忆和一键隐身。
+一款在 JetBrains IDE 侧边栏里看小说的插件：支持本地 txt 与网络小说，带章节目录、进度记忆和一键隐身。
+
+[![JetBrains Marketplace](https://img.shields.io/badge/JetBrains_Marketplace-Se7eni_Novel_Reader-000000?logo=jetbrains)](https://plugins.jetbrains.com/plugin/36457-se7eni-novel-reader)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+
+> 已在 JetBrains Marketplace 上架（pluginId `36457`），审核通过后可直接在 **Settings → Plugins → Marketplace** 搜索 `Se7eni Novel Reader` 安装。
+> 审核期间或离线环境，用下面的「从磁盘安装」即可。
 
 ## 功能
 
@@ -18,7 +24,7 @@
 | 自动滚动 | 按设定速度匀速下滚，滚到底自动翻下一章 |
 | 老板键 | `Ctrl+Alt+Shift+X`，一键切换成 Maven 构建日志 / Java 源码 / 终端输出 / 源码注释 |
 | 源码注释伪装 | 正文渲染成 Java 文件的 Javadoc 注释块，看代码的同时其实还在读小说，详见下文 |
-| 代码提示框 | `Ctrl+Alt+Shift+R` 弹输入框设秒数后，光标旁浮出一句一行的小窗自动换句，详见下文 |
+| 代码提示框 | `Alt+Shift+N` 弹输入框设秒数后，光标旁浮出一句一行的小窗自动换句，详见下文 |
 | 状态栏阅读 | 当前段正文显示在 IDE 左下角状态栏，小键盘 `+`/`-` 翻段，详见下文 |
 
 ## 快捷键
@@ -26,7 +32,7 @@
 | 快捷键 | 作用 |
 | --- | --- |
 | `Ctrl+Alt+Shift+X` | 老板键，隐身或还原 |
-| `Ctrl+Alt+Shift+R` | 代码弹出框阅读：弹秒数输入框→自动换句，再按一次关闭 |
+| `Alt+Shift+N` | 代码弹出框阅读：弹秒数输入框→自动换句，再按一次关闭（旧键 `Ctrl+Alt+Shift+R` 仍然可用） |
 | 小键盘 `+` / `-` | 下一段 / 上一段（弹出框开着时优先翻弹出框，否则翻状态栏） |
 | `空格`（弹窗内） | 开/关自动翻段 |
 | `Ctrl+Alt+→` | 下一章 |
@@ -35,7 +41,7 @@
 | `Ctrl+Alt+Shift+=` | 放大字号 |
 | `Ctrl+Alt+Shift+-` | 缩小字号 |
 
-也可以在 **Tools** 菜单里找到「打开本地小说...」「打开网络小说...」和字号调节项。
+也可以在 **Tools** 菜单、**编辑器右键菜单**里找到「代码弹出框阅读」。
 
 ## 侧边栏太窄怎么办
 
@@ -94,7 +100,7 @@ public final class Chapter0003 {
 
 ## 代码提示框阅读：一句一行，自动换句
 
-按 **`Ctrl+Alt+Shift+R`**（右键菜单、Tools 菜单、工具栏都行），先弹出输入框让你填**自动换句间隔秒数**（只能输入正整数，上次填的会记住），确定后光标附近浮出一小块提示框，开始一句一行自动换句：
+按 **`Alt+Shift+N`**（编辑器里、编辑器右键菜单、Tools 菜单都行；旧键 `Ctrl+Alt+Shift+R` 保留），先弹出输入框让你填**自动换句间隔秒数**（只能输入正整数，上次填的会记住），确定后光标附近浮出一小块提示框，开始一句一行自动换句：
 
 ```
 ┌──────────────────────────────────────────┐
@@ -109,7 +115,7 @@ public final class Chapter0003 {
 - **手动翻句**：`↓` / `→` / `PgDn` / 滚轮向下，`↑` / `←` / `PgUp` / 滚轮向上；小键盘 `+` / `-` 全局有效（鼠标不在弹窗上也能翻）
 - **记忆位置**：关掉时记住读到哪章哪句，下次打开接着读（按书区分）
 - **直接翻章**：`Ctrl+↓` / `Ctrl+↑`；全局翻章快捷键（`Ctrl+Alt+→/←`）同样有效
-- **关闭**：`Esc` 或再按一次 `Ctrl+Alt+Shift+R`。**点弹窗外面不会关**——自动换句时鼠标可以放心去写代码，弹窗一直挂着
+- **关闭**：`Esc` 或再按一次 `Alt+Shift+N`。**点弹窗外面不会关**——自动换句时鼠标可以放心去写代码，弹窗一直挂着
 
 什么时候用它：写代码的间隙想瞟一眼，或者干脆开着自动换句一边写代码一边瞟。它是三种阅读方式里最轻、最不显眼的一种。
 
@@ -160,7 +166,7 @@ public final class Chapter0003 {
 
 工具栏只留 8 个高频按钮，分两段用细竖线隔开：**导航**（打开/网络/书架/目录，带文字）、**翻章与滚动 + 老板键**（纯图标）。窄面板下单行放得下，不再挤成两行。
 
-被挪出去的操作都在**工具栏右键菜单**里：字号调节（也可以 `Ctrl+滚轮` 或在设置页改）、代码弹出框阅读（`Ctrl+Alt+Shift+R`）、打开设置。
+被挪出去的操作都在**工具栏右键菜单**里：字号调节（也可以 `Ctrl+滚轮` 或在设置页改）、代码弹出框阅读（`Alt+Shift+N`）、打开设置。
 
 按钮统一样式在 `ToolbarButtons`：平时透明无边框，悬停/按下才浮出一层圆角底色。这里有个坑——JDK 的 Metal/Nimbus 外观在 `setBorder(null)` 之后**仍然会画自己的背景层**，所以不能靠改 Border 做扁平化，必须 `setContentAreaFilled(false)` + 在 `paintComponent` 里手动画。
 
@@ -168,7 +174,13 @@ public final class Chapter0003 {
 
 ## 安装
 
-### 方式一：从磁盘安装（推荐，无需 Gradle）
+### 方式一：Marketplace 安装（推荐）
+
+**Settings → Plugins → Marketplace**，搜索 `Se7eni Novel Reader`，点 **Install** 后重启 IDE。
+
+插件页：<https://plugins.jetbrains.com/plugin/36457-se7eni-novel-reader>
+
+### 方式二：从磁盘安装（无需 Gradle）
 
 项目里已经有打包脚本，它会直接用 IDEA 自带的 JBR 编译源码：
 
@@ -178,15 +190,17 @@ python tools/package_local.py
 python tools/package_local.py --idea "D:/你的路径/IntelliJ IDEA 2026.2.0.1"
 ```
 
-产出 `build/dist/idea-novel-reader-1.0.17.zip`，然后在 IDEA 里：
+产出 `build/dist/idea-novel-reader-<版本号>.zip`（当前 `1.0.22`），然后在 IDEA 里：
 **Settings → Plugins → 右上角齿轮 → Install Plugin from Disk**，选中这个 zip，重启 IDE。
 
-### 方式二：Gradle 构建
+### 方式三：Gradle 构建
 
 ```bash
 ./gradlew buildPlugin
-# 产出 build/distributions/idea-novel-reader-1.0.17.zip
+# 产出 build/distributions/idea-novel-reader-<版本号>.zip
 ```
+
+版本号统一在 `gradle.properties` 的 `pluginVersion` 里改；`publishPlugin` 会通过 CI 自动签名并上传 Marketplace，详见 [docs/PUBLISH.md](docs/PUBLISH.md)。
 
 构建依赖在 `gradle.properties` 里配置：
 
@@ -219,6 +233,7 @@ src/main/java/com/github/ideanovel/
 - **大目录不做截断**：章节目录曾经限制「最多显示 800 条」，结果 1000+ 章的小说永远点不到尾部章节。这是个把「渲染多少」和「加载多少」搞混的典型错误 —— Swing 的 `JList` 本来就是惰性渲染，只画可视区那几十条，条目多不影响滚动；真正影响性能的是**没有固定行高**，那样 `JList` 要为每条去问渲染器拿高度。所以正确做法是 `setFixedCellHeight(...)`，而不是砍数据。实测 2 万章加载仅 3ms。
 - **弹出框「内容 / 宿主」分家**：`MiniTooltipContent`（纯 Swing，内容、键位、滚轮）与 `CodePopupReader`（平台 API，浮在哪、怎么关）拆开。宿主全是 `JBPopupFactory` 这类离线用不了的平台类，混在一起就没法渲染验证。这也是这个插件第二次做这种拆分（第一次是书架的 `BookStore`），规律是一样的：**想离线验证，先让组件不依赖 `ApplicationManager`**。
 - **提示框的正文切段是纯函数**：`ChapterChunks.split` 把章节按句末标点切成 60 字以内的小段，没有 Swing、没有平台类，空正文、无标点超长句、引号收尾这些边界都能直接断言。段进度 `(n/N)` 的颜色是往底色混出来的，深浅主题各自重算，探针里对两种主题都验了对比度。
+- **占位内容不能当章尾**：翻段逻辑用「还有没有下一段」判断章尾，但章节加载中时 `setPlaceholder` 只放了一条「正在加载…」，于是**加载提示被误判成章尾**，自动翻段会把整本书一路跳过去；空章节同理。现在加载中 / 空章节都不触发越章，自动模式下的越章再加 3 秒限速（手动翻章不受影响）。这个回归在 `MiniTooltipProbe.checkNoRunawayChapters` 里锁住了。
 - **两份「源码视图」共用一份内容**：侧边栏伪装和弹出框都吃 `CodeDocument.buildLines` 这一个实现。改动前先把旧实现的产出冻结成 golden 文件（`tools/probe/golden/code-lines.txt`），重构后逐字节比对——这类「同一章在两种阅读方式里长得不一样」的回归，肉眼根本看不出来。
 - **`JBPopup` 的标题只能在创建时给**：想运行时改标题没有 API（反射核对过 `JBPopup` 的方法表），而弹窗标题要随章节变（`Chapter0004.java` → `Chapter0005.java`），所以文件名画在内容顶栏里，不用平台的标题栏。
 - **滚轮的老坑在弹窗里又来了一遍**：给文本组件注册 `MouseWheelListener` 会就地吃掉滚轮事件，外层滚动容器收不到。弹窗里的处理和正文区一样是「Ctrl 调字号、否则自己算行高补滚动」，行高必须问 `JTextPane.getScrollableUnitIncrement` 要（滚动条自己的 `getUnitIncrement()` 返回 1 像素）。探针里注入真实滚轮事件断言滚动条位移不为 0，专门防这个。
