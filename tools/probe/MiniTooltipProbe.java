@@ -118,10 +118,17 @@ public final class MiniTooltipProbe {
         List<String> empty = ChapterChunks.split("");
         want(empty.size() == 1 && empty.get(0).isEmpty(), "空正文返回一段空串");
 
-        // 普通段落：缩进的段首全角空格不进内容
+        // 连续短行合并：不再逐行独立成段，攒到接近一行
         List<String> two = ChapterChunks.split("　　第一段。\n　　第二段。");
-        want(two.size() == 2, "空行分段（%d 段）".formatted(two.size()));
+        want(two.size() == 1, "连续短行合并成一段（%d 段）".formatted(two.size()));
         want(two.get(0).startsWith("第一段"), "段首全角缩进被去掉（实际「%s」）".formatted(two.get(0)));
+
+        // 对话短行：一句话一行的排版，合并后不该还是一条几个字
+        List<String> dialog = ChapterChunks.split(
+                "他看着她。\n她别过脸。\n他上前一步。\n她后退一步。\n他站住了。\n她抬起头。\n");
+        want(dialog.size() <= 2, "对话短行合并（%d 段）".formatted(dialog.size()));
+        want(dialog.stream().allMatch(s -> s.length() <= ChapterChunks.MAX_CHARS),
+                "合并后每段仍不超上限");
 
         // 句末断句：不超过上限，且断在句号后
         StringBuilder longPara = new StringBuilder();

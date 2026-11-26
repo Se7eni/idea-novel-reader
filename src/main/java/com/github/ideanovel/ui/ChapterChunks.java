@@ -38,17 +38,35 @@ public final class ChapterChunks {
         if (maxChars < 4) {
             maxChars = 4;
         }
+        // 短行合并：小说常有「一句话换一行」的排版，逐行切会让弹窗一行只剩几个字，
+        // 翻得又碎又快。这里把连续的短行攒起来，攒够 maxChars 或遇到空行（自然段边界）
+        // 再落盘，尽量让每次显示接近一行。
+        StringBuilder pending = new StringBuilder();
         for (String paragraph : text.split("\n")) {
             String trimmed = stripIndent(paragraph);
             if (trimmed.isEmpty()) {
+                flush(pending, out, maxChars);
                 continue;
             }
-            splitParagraph(trimmed, maxChars, out);
+            pending.append(trimmed);
+            if (pending.length() >= maxChars) {
+                flush(pending, out, maxChars);
+            }
         }
+        flush(pending, out, maxChars);
         if (out.isEmpty()) {
             out.add("");
         }
         return out;
+    }
+
+    /** 把攒着的文本交给 {@link #splitParagraph} 切，然后清空缓冲 */
+    private static void flush(StringBuilder pending, List<String> out, int maxChars) {
+        if (pending.length() == 0) {
+            return;
+        }
+        splitParagraph(pending.toString(), maxChars, out);
+        pending.setLength(0);
     }
 
     /** 去掉段首的全角/半角缩进和段尾空白 */
