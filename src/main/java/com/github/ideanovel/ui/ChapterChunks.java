@@ -48,16 +48,42 @@ public final class ChapterChunks {
                 flush(pending, out, maxChars);
                 continue;
             }
+            // 段落之间补一个空格：章节正文的第一行就是标题（Chapter.startOffset 含标题行），
+            // 不加分隔会粘成「第17章 绝境！郑笙拿着菜刀」。
+            if (pending.length() > 0) {
+                pending.append(' ');
+            }
             pending.append(trimmed);
             if (pending.length() >= maxChars) {
                 flush(pending, out, maxChars);
             }
         }
         flush(pending, out, maxChars);
+        // 切完可能留下一个很短的尾段（比如「住了。」），翻过去等于白翻一次。
+        // 把不足半行长的尾段并回前一段——上限放宽到 maxChars + 10，
+        // 弹窗宽度仍在一行内（13px 字号下 40 字约 520px，未到 600 上限）。
+        mergeTrailingFragment(out, Math.max(10, maxChars / 2), maxChars + 10);
         if (out.isEmpty()) {
             out.add("");
         }
         return out;
+    }
+
+    /** 把过短的尾段并回前一段，直到尾段够长或合并后会超出宽度上限 */
+    private static void mergeTrailingFragment(List<String> out, int minLen, int maxLen) {
+        while (out.size() >= 2) {
+            int last = out.size() - 1;
+            String tail = out.get(last);
+            if (tail.length() >= minLen) {
+                break;
+            }
+            String merged = out.get(last - 1) + " " + tail;
+            if (merged.length() > maxLen) {
+                break;
+            }
+            out.set(last - 1, merged);
+            out.remove(last);
+        }
     }
 
     /** 把攒着的文本交给 {@link #splitParagraph} 切，然后清空缓冲 */
@@ -150,14 +176,21 @@ public final class ChapterChunks {
      * 这类碎片在弹窗里就是一行只剩下「。”」，翻过去毫无意义。
      */
     private static void addSegment(String segment, List<String> out) {
-        if (segment == null || segment.isEmpty()) {
+        if (segment == null) {
             return;
         }
-        if (isOnlyPunctuation(segment) && !out.isEmpty()) {
-            out.set(out.size() - 1, out.get(out.size() - 1) + segment);
+        // 段首尾的空格没有意义（弹窗一次只显示一段），去掉；
+        // 段内的空格是段落分隔，要保留
+        String trimmed = segment.trim();
+        if (trimmed.isEmpty()) {
             return;
         }
-        out.add(segment);
+        if (isOnlyPunctuation(trimmed) && !out.isEmpty()) {
+            // 纯标点贴着上一句，中间不加空格
+            out.set(out.size() - 1, out.get(out.size() - 1) + trimmed);
+            return;
+        }
+        out.add(trimmed);
     }
 
     /** 是否只由标点和空白组成（没有任何文字或数字） */

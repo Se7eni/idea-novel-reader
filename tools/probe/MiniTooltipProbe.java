@@ -127,7 +127,7 @@ public final class MiniTooltipProbe {
         List<String> dialog = ChapterChunks.split(
                 "他看着她。\n她别过脸。\n他上前一步。\n她后退一步。\n他站住了。\n她抬起头。\n");
         want(dialog.size() <= 2, "对话短行合并（%d 段）".formatted(dialog.size()));
-        want(dialog.stream().allMatch(s -> s.length() <= ChapterChunks.MAX_CHARS),
+        want(dialog.stream().allMatch(s -> s.length() <= ChapterChunks.MAX_CHARS + 10),
                 "合并后每段仍不超上限");
 
         // 句末断句：不超过上限，且断在句号后
@@ -136,7 +136,7 @@ public final class MiniTooltipProbe {
             longPara.append("他说了一句话").append(i).append("。");
         }
         List<String> sentences = ChapterChunks.split(longPara.toString());
-        boolean allWithin = sentences.stream().allMatch(s -> s.length() <= ChapterChunks.MAX_CHARS);
+        boolean allWithin = sentences.stream().allMatch(s -> s.length() <= ChapterChunks.MAX_CHARS + 10);
         want(allWithin, "每段都不超过上限（最长 %d / %d）".formatted(
                 sentences.stream().mapToInt(String::length).max().orElse(0), ChapterChunks.MAX_CHARS));
         boolean endsWithPeriod = sentences.stream().allMatch(s -> {
@@ -153,7 +153,7 @@ public final class MiniTooltipProbe {
         List<String> hard = ChapterChunks.split(noPunct.toString());
         String rejoined = String.join("", hard);
         want(rejoined.equals(noPunct.toString()), "无标点硬切不丢字（%d 段拼回原样）".formatted(hard.size()));
-        want(hard.stream().allMatch(s -> s.length() <= ChapterChunks.MAX_CHARS), "硬切后每段仍不超限");
+        want(hard.stream().allMatch(s -> s.length() <= ChapterChunks.MAX_CHARS + 10), "硬切后每段仍不超限");
 
         // 引号收尾：句号+后引号要连在一起
         String quoted = "「一二三四五六七八九十」。".repeat(8);
@@ -174,6 +174,14 @@ public final class MiniTooltipProbe {
                 "没有纯标点段（%s）".formatted(tailQuote));
         want(tailQuote.stream().filter(s -> s.contains("”")).allMatch(s -> s.contains("我明白了")),
                 "收尾引号不单独成段（%s）".formatted(tailQuote));
+
+        // 章节正文第一行是标题（Chapter.startOffset 含标题行），
+        // 合并到一行时必须补空格，否则会粘成「第17章 绝境！郑笙拿着菜刀」
+        List<String> withTitle = ChapterChunks.split("第17章 绝境！\n郑笙拿着菜刀。\n手起刀落。");
+        want(withTitle.get(0).contains("绝境！ 郑笙"),
+                "标题与正文之间有空格（%s）".formatted(withTitle.get(0)));
+        want(withTitle.get(0).contains("菜刀。 手起刀落"),
+                "正文相邻短行之间也有空格（%s）".formatted(withTitle.get(0)));
     }
 
     // ---------------- 渲染 ----------------
