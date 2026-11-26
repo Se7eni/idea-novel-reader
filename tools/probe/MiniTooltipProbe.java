@@ -164,6 +164,16 @@ public final class MiniTooltipProbe {
         // 超长一句不存在的边界：单段短于上限时原样一段
         List<String> shortOne = ChapterChunks.split("很短的一段。");
         want(shortOne.size() == 1 && shortOne.get(0).equals("很短的一段。"), "短段原样保留");
+
+        // 断点落在「。」和「”」之间时，收尾引号必须留在上一段，
+        // 否则弹窗会出现只剩「。”」的碎片（真实反馈过的现象）
+        List<String> tailQuote = ChapterChunks.split(
+                "他说：“我明白了。”然后他走了出去，门在他身后关上，走廊里只剩下雨声和风声，"
+                        + "还有楼下偶尔传来的脚步声。");
+        want(tailQuote.stream().noneMatch(s -> s.replaceAll("[\\p{P}\\s]", "").isEmpty()),
+                "没有纯标点段（%s）".formatted(tailQuote));
+        want(tailQuote.stream().filter(s -> s.contains("”")).allMatch(s -> s.contains("我明白了")),
+                "收尾引号不单独成段（%s）".formatted(tailQuote));
     }
 
     // ---------------- 渲染 ----------------

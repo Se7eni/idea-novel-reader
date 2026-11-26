@@ -117,13 +117,64 @@ public final class ChapterChunks {
                     break;
                 }
             }
-            out.add(paragraph.substring(start, breakAt));
+            // 断点往往正好落在「。」和「”」之间：只断在句号后的话，收尾引号会被
+            // 甩到下一段，弹窗就出现「。”」这种只有一两个标点的碎片。
+            // 这里把紧跟断点的空白和收尾引号一起吃掉。
+            breakAt = extendOverClosers(paragraph, breakAt);
+            addSegment(paragraph.substring(start, breakAt), out);
             start = breakAt;
         }
         if (len - start > 0) {
-            out.add(paragraph.substring(start));
+            addSegment(paragraph.substring(start), out);
         } else if (out.isEmpty()) {
-            out.add(paragraph);
+            addSegment(paragraph, out);
         }
+    }
+
+    /** 从 pos 起吃掉紧邻的空白与收尾引号，返回新的断点 */
+    private static int extendOverClosers(String s, int pos) {
+        int i = pos;
+        while (i < s.length()) {
+            char c = s.charAt(i);
+            if (c == ' ' || c == '\t' || CLOSERS.indexOf(c) >= 0) {
+                i++;
+            } else {
+                break;
+            }
+        }
+        return i;
+    }
+
+    /**
+     * 把一段加进结果。纯标点（含空白）的段并回前一段——
+     * 这类碎片在弹窗里就是一行只剩下「。”」，翻过去毫无意义。
+     */
+    private static void addSegment(String segment, List<String> out) {
+        if (segment == null || segment.isEmpty()) {
+            return;
+        }
+        if (isOnlyPunctuation(segment) && !out.isEmpty()) {
+            out.set(out.size() - 1, out.get(out.size() - 1) + segment);
+            return;
+        }
+        out.add(segment);
+    }
+
+    /** 是否只由标点和空白组成（没有任何文字或数字） */
+    private static boolean isOnlyPunctuation(String s) {
+        if (s.trim().isEmpty()) {
+            return false;
+        }
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (Character.isLetterOrDigit(c)) {
+                return false;
+            }
+            if (SENTENCE_ENDS.indexOf(c) < 0 && CLOSERS.indexOf(c) < 0
+                    && c != ' ' && c != '\t' && c != '\n') {
+                return false;
+            }
+        }
+        return true;
     }
 }
