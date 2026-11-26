@@ -18,11 +18,6 @@ import com.intellij.openapi.wm.WindowManager;
 import com.intellij.ui.awt.RelativePoint;
 
 import java.awt.Point;
-import java.awt.Window;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowFocusListener;
-import javax.swing.SwingUtilities;
 
 /**
  * 代码提示框的宿主：把 {@link MiniTooltipContent} 装进一个 JBPopup，贴在光标旁。
@@ -57,14 +52,6 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
     private JBPopup popup;
     private boolean disposed;
     private boolean listenerAttached;
-
-    /**
-     * 弹窗所在窗口的焦点监听。
-     *
-     * <p>失焦（点代码、切到别的窗口）时暂停自动翻段，重新聚焦时接着跑。
-     * 没有它的话，人已经不在看弹窗了，定时器还在后面翻，到章尾就自己跳下一章。
-     */
-    private WindowFocusListener focusListener;
 
     private CodePopupReader(Project project) {
         this.project = project;
@@ -232,46 +219,6 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
         attach();
         active = this;
         popup.show(anchorPoint());
-        attachFocusWatcher();
-    }
-
-    /**
-     * 挂上焦点监听：弹窗失焦就暂停自动翻段。
-     *
-     * <p>推迟一拍再挂——{@code show()} 之后内容才真正进到窗口里，
-     * 立刻取 {@code getWindowAncestor} 可能还是 null。
-     */
-    private void attachFocusWatcher() {
-        SwingUtilities.invokeLater(() -> {
-            Window window = SwingUtilities.getWindowAncestor(content);
-            if (window == null || focusListener != null) {
-                return;
-            }
-            focusListener = new WindowAdapter() {
-                @Override
-                public void windowLostFocus(WindowEvent e) {
-                    content.pauseAutoOnFocusLost();
-                }
-
-                @Override
-                public void windowGainedFocus(WindowEvent e) {
-                    content.resumeAutoOnFocusGained();
-                }
-            };
-            window.addWindowFocusListener(focusListener);
-        });
-    }
-
-    /** 摘掉焦点监听，避免弹窗关掉后还挂在（可能复用的）窗口上 */
-    private void detachFocusWatcher() {
-        if (focusListener == null) {
-            return;
-        }
-        Window window = SwingUtilities.getWindowAncestor(content);
-        if (window != null) {
-            window.removeWindowFocusListener(focusListener);
-        }
-        focusListener = null;
     }
 
     /** 打开时恢复到上次读到的章节 + 段位置（记忆位置只按当前书匹配） */
@@ -372,7 +319,6 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
     }
 
     private void detach() {
-        detachFocusWatcher();
         try {
             if (listenerAttached) {
                 NovelReaderService.getInstance().removeListener(this);

@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.github.ideanovel.reader</id>
     <name>Se7eni Novel Reader</name>
-    <version>1.0.29</version>
+    <version>1.0.30</version>
     <vendor email="Se7eni@users.noreply.github.com" url="https://github.com/Se7eni/idea-novel-reader">ideanovel</vendor>
 
     <description><![CDATA[
@@ -23,6 +23,7 @@
 
     <change-notes><![CDATA[
     <ul>
+        <li>1.0.30 调整：在 IDE 里点代码（边写边看）不再暂停自动翻段，只有切到其他应用、弹窗自动关闭时才停。之前把「弹窗失焦」当成「切走」，点一下代码就停，跟「一边写代码一边瞟」的初衷冲突</li>
         <li>1.0.29 修复：在侧边栏切到别的章节后再打开代码弹窗，阅读器会被拽回弹窗上次关闭时的旧章节（表现为「我切了下一章又自己跳回去」/「弹窗和侧边栏不是同一章」）。现在章节以当前阅读进度为准，弹窗只负责恢复「读到第几句」</li>
         <li>1.0.28 调小代码弹窗高度：之前拿 JTextPane 的 preferredSize 当单行高度（它把文档尾部的空段落也算进去，接近两行高），弹窗底部就多出很明显的一条空白。改用字体度量算单行，上下内边距也收紧</li>
         <li>1.0.27 排查修复：老板键的另外三种伪装（Maven 构建日志 / Java 源码 / 终端输出）下自动滚动没有停，正文不可见却会一路滚到底自动跳章；目录搜索或清空搜索后，当前章节的选中高亮不再丢失；项目关闭时面板收尾更稳（服务已销毁不会中断清理）</li>
