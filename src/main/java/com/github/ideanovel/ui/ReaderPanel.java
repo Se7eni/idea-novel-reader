@@ -181,6 +181,7 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
         progressTimer.start();
 
         showWelcome();
+        restoreLastBookIfNeeded();
     }
 
 
@@ -697,6 +698,35 @@ public class ReaderPanel extends JPanel implements Disposable, NovelReaderServic
     }
 
     // ---------------- 工具条动作 ----------------
+
+    /**
+     * IDEA 重启后 {@link NovelReaderService} 是空的。如果用户开了「启动时自动打开上次读的书」，
+     * 这里按最近一条阅读进度把书重新打开，章节位置由 setBook 里的 rememberProgress 逻辑接着恢复。
+     *
+     * <p>本地文件先确认还在——文件被删了就静默跳过，免得每次启动都弹一条「加载失败」。
+     */
+    private void restoreLastBookIfNeeded() {
+        NovelReaderService service = NovelReaderService.getInstance();
+        if (service.getBook() != null) {
+            return;   // 已经有书（别的项目先打开了），不重复恢复
+        }
+        NovelSettingsState s = NovelSettingsState.getInstance();
+        if (s == null || !s.autoRestoreLastBook || !s.rememberProgress) {
+            return;
+        }
+        ReadingProgress last = s.recentBooks().stream().findFirst().orElse(null);
+        if (last == null || last.location == null || last.location.isBlank()) {
+            return;
+        }
+        if (last.safeType() == SourceType.LOCAL) {
+            if (!new java.io.File(last.location).isFile()) {
+                return;   // 文件没了，静默跳过
+            }
+            service.openLocal(last.location);
+        } else {
+            service.openRemote(last.location);
+        }
+    }
 
     private void openLocal() {
         FileChooserDescriptorHolder holder = new FileChooserDescriptorHolder();

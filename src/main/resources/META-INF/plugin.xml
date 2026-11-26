@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.github.ideanovel.reader</id>
     <name>Se7eni Novel Reader</name>
-    <version>1.0.33</version>
+    <version>1.0.34</version>
     <vendor email="Se7eni@users.noreply.github.com" url="https://github.com/Se7eni/idea-novel-reader">ideanovel</vendor>
 
     <description><![CDATA[
@@ -23,6 +23,7 @@
 
     <change-notes><![CDATA[
     <ul>
+        <li>1.0.34 新增：启动时自动打开上次读的书并回到上次的章节（设置里可关）。IDEA 重启后不用再手动去书架找</li>
         <li>1.0.33 修复：弹窗把章节标题和正文合并到一行时中间补一个空格，不再粘成「第17章 绝境！郑笙拿着菜刀」；正文相邻短行之间也有空格分隔</li>
         <li>1.0.32 修复：弹窗分段不再出现只有一两个标点的碎片——断点落在「。」和收尾引号之间时把引号留在上一段，纯标点段也会并回前一段</li>
         <li>1.0.31 优化：代码弹窗分段合并连续短行——小说常见「一句话换一行」，之前逐行切会让弹窗一行只剩几个字、翻得又碎又快。现在短行会攒到接近一行才切，空行（段落边界）仍保留</li>

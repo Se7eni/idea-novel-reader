@@ -46,6 +46,7 @@ public class NovelSettingsConfigurable implements SearchableConfigurable {
     private JComboBox<NovelSettingsState.DisguiseMode> disguiseMode;
     private JCheckBox bossKeyHideWindow;
     private JCheckBox rememberProgress;
+    private JCheckBox autoRestoreLastBook;
     private JSpinner remoteChapterLimit;
 
     @Override
@@ -92,6 +93,8 @@ public class NovelSettingsConfigurable implements SearchableConfigurable {
         bossKeyHideWindow = new JCheckBox("老板键直接隐藏整个工具窗（不做伪装）",
                 s != null && s.bossKeyHideWindow);
         rememberProgress = new JCheckBox("记住阅读进度", s == null || s.rememberProgress);
+        autoRestoreLastBook = new JCheckBox("启动时自动打开上次读的书",
+                s == null || s.autoRestoreLastBook);
         remoteChapterLimit = spinner(s == null ? 50 : s.remoteChapterLimit, 0, 2000, 10);
 
         root = new JPanel(new GridBagLayout());
@@ -124,6 +127,7 @@ public class NovelSettingsConfigurable implements SearchableConfigurable {
         row = addRow("伪装成", disguiseMode, row, c);
         row = addRow("", bossKeyHideWindow, row, c);
         row = addRow("", rememberProgress, row, c);
+        row = addRow("", autoRestoreLastBook, row, c);
         row = addRow("网络小说解析章节上限", remoteChapterLimit, row, c);
 
         // 把剩余空间顶上去
@@ -187,6 +191,7 @@ public class NovelSettingsConfigurable implements SearchableConfigurable {
                 || disguiseMode.getSelectedItem() != s.disguise()
                 || bossKeyHideWindow.isSelected() != s.bossKeyHideWindow
                 || rememberProgress.isSelected() != s.rememberProgress
+                || autoRestoreLastBook.isSelected() != s.autoRestoreLastBook
                 || intOf(remoteChapterLimit) != s.remoteChapterLimit;
     }
 
@@ -216,6 +221,7 @@ public class NovelSettingsConfigurable implements SearchableConfigurable {
                 : ((NovelSettingsState.DisguiseMode) disguiseMode.getSelectedItem()).ordinal();
         s.bossKeyHideWindow = bossKeyHideWindow.isSelected();
         s.rememberProgress = rememberProgress.isSelected();
+        s.autoRestoreLastBook = autoRestoreLastBook.isSelected();
         s.remoteChapterLimit = intOf(remoteChapterLimit);
 
         NovelReaderService service = NovelReaderService.getInstance();
@@ -246,6 +252,7 @@ public class NovelSettingsConfigurable implements SearchableConfigurable {
         disguiseMode.setSelectedItem(s.disguise());
         bossKeyHideWindow.setSelected(s.bossKeyHideWindow);
         rememberProgress.setSelected(s.rememberProgress);
+        autoRestoreLastBook.setSelected(s.autoRestoreLastBook);
         remoteChapterLimit.setValue(s.remoteChapterLimit);
     }
 

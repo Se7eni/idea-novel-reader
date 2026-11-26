@@ -57,6 +57,13 @@ public class NovelSettingsState implements PersistentStateComponent<NovelSetting
     public boolean bossKeyHideWindow = false;
 
     public boolean rememberProgress = true;
+    /**
+     * 启动时自动重新打开上次读的书。
+     *
+     * <p>IDEA 重启后 {@link com.github.ideanovel.service.NovelReaderService} 是空的，
+     * 没有这个开关就得每次手动去书架里翻。章节位置由 rememberProgress 那套接着恢复。
+     */
+    public boolean autoRestoreLastBook = true;
     /** 网络小说一次最多解析多少章 */
     public int remoteChapterLimit = 50;
 
