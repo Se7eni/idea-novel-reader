@@ -51,9 +51,6 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
      */
     private boolean jumpToEndPending;
 
-    /** 恢复位置时，若目标章节 != 当前章节，先把段位置暂存到这里，等 chapterChanged 到达再落地 */
-    private int pendingChunkOnRestore = -1;
-
     /** 上一次 chapterChanged 的章号。用于识别「同章内容刷新」，换书时重置，避免串书 */
     private int lastChapterIndex = -1;
 
@@ -288,17 +285,13 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
         if (!s.popupBookId.equals(book.getId())) {
             return;
         }
-        int targetChapter = s.popupChapterIndex;
-        if (targetChapter < 0 || targetChapter >= book.getChapters().size()) {
-            return;
-        }
-        if (targetChapter != service.getChapterIndex()) {
-            // 章节不同：跳章是异步的（chapterChanged 稍后到），段位置先暂存，
-            // 等 chapterChanged 到达再落到内容里，避免被旧章节的首次渲染消费掉
-            pendingChunkOnRestore = s.popupChunkIndex;
-            service.gotoChapter(targetChapter);
-        } else {
-            // 章节相同：直接指定段位置，show() 里的 refresh() 会带着它重渲染
+        // 只恢复「读到第几句」，章节一律以当前阅读进度为准。
+        //
+        // 以前这里会把阅读器拽回弹窗上次关闭时的章节（service.gotoChapter(target)）：
+        // 用户在侧边栏翻到下一章后再打开弹窗，整个阅读器会跳回旧章，
+        // 表现就是「我切了下一章又自己跳回去」/「弹窗和侧边栏不是同一章」。
+        // 弹窗是辅助窗口，不该主导阅读位置。
+        if (s.popupChapterIndex == service.getChapterIndex()) {
             content.setPendingChunk(s.popupChunkIndex);
         }
     }
@@ -412,10 +405,7 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
             // 否则 refresh() 里的 setChapter 会把读到一半的人打回第一段
             boolean sameChapter = lastChapterIndex == index && lastChapterIndex >= 0;
             lastChapterIndex = index;
-            if (pendingChunkOnRestore >= 0) {
-                content.setPendingChunk(pendingChunkOnRestore);
-                pendingChunkOnRestore = -1;
-            } else if (sameChapter) {
+            if (sameChapter) {
                 content.setPendingChunk(content.chunkIndex());
             }
             refresh();
@@ -433,9 +423,8 @@ public final class CodePopupReader implements Disposable, NovelReaderService.Nov
     @Override
     public void bookChanged(Book book) {
         if (isOpen()) {
-            // 换书：清掉同章判断与待恢复位置，避免把旧书的段位置套到新书
+            // 换书：清掉同章判断，避免把旧书的段位置套到新书
             lastChapterIndex = -1;
-            pendingChunkOnRestore = -1;
             refresh();
         }
     }
